@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 public class CoreSubject extends Subject {
 

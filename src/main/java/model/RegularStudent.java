@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 // "extends Student" means: RegularStudent automatically gets
 // everything Student already has (name, age, email, etc.)

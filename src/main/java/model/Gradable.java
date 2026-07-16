@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 // An "interface" is just a checklist. It has NO code inside it,
 // only a list of methods that a class PROMISES to write itself

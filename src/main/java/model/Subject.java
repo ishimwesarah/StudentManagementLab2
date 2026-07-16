@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 // This follows the exact same pattern as Student:
 // an unfinished template that CoreSubject and ElectiveSubject

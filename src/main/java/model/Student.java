@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 // "abstract class" = a template that is not 100% finished.
 // You can never create a plain "Student" object directly.

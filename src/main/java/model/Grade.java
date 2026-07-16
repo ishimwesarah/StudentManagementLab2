@@ -1,4 +1,4 @@
-package com.schoolapp.gradesystem.model;
+package model;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
