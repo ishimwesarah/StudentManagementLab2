@@ -1,3 +1,5 @@
+import exception.InvalidGradeException;
+import exception.StudentNotFoundException;
 import model.*;
 import service.*;
 
@@ -155,12 +157,9 @@ public class ConsoleApp {
         System.out.println("RECORD GRADE");
         System.out.println("---------------------------------------------");
 
-        System.out.print("Enter Student ID: ");
-        String studentId = scanner.nextLine();
-        Student student = studentManager.findStudent(studentId);
-
+        Student student = promptForExistingStudent();
         if (student == null) {
-            System.out.println("No student found with ID: " + studentId);
+            System.out.println("Grade entry cancelled.");
             return;
         }
 
@@ -209,7 +208,11 @@ public class ConsoleApp {
             }
         }
 
-        double grade = readGrade();
+        double grade = promptForGrade();
+        if (grade < 0) {
+            System.out.println("Grade entry cancelled.");
+            return;
+        }
 
         System.out.println();
         System.out.println("GRADE CONFIRMATION");
@@ -239,16 +242,43 @@ public class ConsoleApp {
         System.out.println("VIEW GRADE REPORT");
         System.out.println("---------------------------------------------");
 
-        System.out.print("Enter Student ID: ");
-        String studentId = scanner.nextLine();
-        Student student = studentManager.findStudent(studentId);
-
+        Student student = promptForExistingStudent();
         if (student == null) {
-            System.out.println("No student found with ID: " + studentId);
+            System.out.println("Cancelled.");
             return;
         }
 
         gradeReportPrinter.printReport(student);
+    }
+
+    /**
+     * Repeatedly prompts for a Student ID until a valid one is entered or
+     * the user declines to try again. Centralizes the StudentNotFoundException
+     * handling so recordGrade() and viewGradeReport() don't duplicate it.
+     *
+     * @return the found Student, or null if the user chose not to retry
+     */
+    private Student promptForExistingStudent() {
+        while (true) {
+            System.out.print("Enter Student ID: ");
+            String studentId = scanner.nextLine();
+
+            try {
+                return studentManager.findStudent(studentId);
+            } catch (StudentNotFoundException e) {
+                System.out.println();
+                System.out.println("\u2717 ERROR: StudentNotFoundException");
+                System.out.println("  " + e.getMessage());
+                System.out.println();
+                System.out.println("  Available student IDs: " + String.join(", ", studentManager.getAllStudentIds()));
+                System.out.println();
+                System.out.print("  Try again? (Y/N): ");
+                String retry = scanner.nextLine();
+                if (!retry.equalsIgnoreCase("Y")) {
+                    return null;
+                }
+            }
+        }
     }
 
     // Input validation helpers
@@ -271,18 +301,50 @@ public class ConsoleApp {
     }
 
     // 2. grades
-    private double readGrade() {
+
+    /**
+     * Parses and validates a single grade entry, throwing InvalidGradeException
+     * for either a non-numeric input or a value outside 0-100. Does not loop -
+     * that's promptForGrade()'s job.
+     */
+    private double parseGrade() throws InvalidGradeException {
+        System.out.print("Enter grade (0-100): ");
+        String input = scanner.nextLine();
+
+        double value;
+        try {
+            value = Double.parseDouble(input.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidGradeException("Grade must be a valid number. You entered: '" + input.trim() + "'");
+        }
+
+        if (value < 0 || value > 100) {
+            throw new InvalidGradeException("Grade must be between 0 and 100. You entered: " + value);
+        }
+
+        return value;
+    }
+
+    /**
+     * Repeatedly prompts for a grade until a valid one is entered or the
+     * user declines to try again.
+     *
+     * @return a valid grade in [0, 100], or -1 if the user chose not to retry
+     */
+    private double promptForGrade() {
         while (true) {
-            System.out.print("Enter grade (0-100): ");
-            String input = scanner.nextLine();
             try {
-                double value = Double.parseDouble(input.trim());
-                if (value >= 0 && value <= 100) {
-                    return value;
+                return parseGrade();
+            } catch (InvalidGradeException e) {
+                System.out.println();
+                System.out.println("\u2717 ERROR: InvalidGradeException");
+                System.out.println("  " + e.getMessage());
+                System.out.println();
+                System.out.print("  Try again? (Y/N): ");
+                String retry = scanner.nextLine();
+                if (!retry.equalsIgnoreCase("Y")) {
+                    return -1;
                 }
-                System.out.println("Grade must be between 0 and 100.");
-            } catch (NumberFormatException e) {
-                System.out.println("Please enter a valid number.");
             }
         }
     }
