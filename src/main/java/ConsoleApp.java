@@ -26,6 +26,8 @@ public class ConsoleApp {
     private final GradeManager gradeManager;
     private final GradeAverageCalculator gradeAverageCalculator;
     private final GradeReportPrinter gradeReportPrinter;
+    private final GPACalculator gpaCalculator;
+    private final GPAReportPrinter gpaReportPrinter;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -44,6 +46,9 @@ public class ConsoleApp {
         this.gradeManager = new GradeManager();
         this.gradeAverageCalculator = new GradeAverageCalculator();
         this.gradeReportPrinter = new GradeReportPrinter(gradeManager, gradeAverageCalculator);
+
+        this.gpaCalculator = new GPACalculator();
+        this.gpaReportPrinter = new GPAReportPrinter(gradeManager, studentManager, gpaCalculator);
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -75,13 +80,16 @@ public class ConsoleApp {
                     viewGradeReport();
                     break;
                 case 5:
+                    viewStudentGpa();
+                    break;
+                case 6:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 5.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 6.");
                     break;
             }
 
@@ -102,7 +110,8 @@ public class ConsoleApp {
         System.out.println("2. View Students");
         System.out.println("3. Record Grade");
         System.out.println("4. View Grade Report");
-        System.out.println("5. Exit");
+        System.out.println("5. Calculate Student GPA");
+        System.out.println("6. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -251,10 +260,25 @@ public class ConsoleApp {
         gradeReportPrinter.printReport(student);
     }
 
+    private void viewStudentGpa() {
+        System.out.println();
+        System.out.println("CALCULATE STUDENT GPA");
+        System.out.println("---------------------------------------------");
+
+        Student student = promptForExistingStudent();
+        if (student == null) {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        gpaReportPrinter.printGpaReport(student);
+    }
+
     /**
      * Repeatedly prompts for a Student ID until a valid one is entered or
      * the user declines to try again. Centralizes the StudentNotFoundException
-     * handling so recordGrade() and viewGradeReport() don't duplicate it.
+     * handling so recordGrade(), viewGradeReport(), and viewStudentGpa() don't
+     * duplicate it.
      *
      * @return the found Student, or null if the user chose not to retry
      */
