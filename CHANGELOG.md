@@ -100,3 +100,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   a sub-menu for the four search modes (Exit shifted from 7 to 8).
 - Unit tests: `StudentSearchServiceTest` covering all four search modes,
   including no-match and partial-match cases.
+
+
+
+#### feature/export-report
+- Added `ReportExportException` for file-write failures.
+- Added `ReportGenerator`: builds summary and detailed report text as a
+  `String`, independent of where it ends up (console, file, etc.).
+- Added `FileExporter`: writes report text to `reports/{filename}.txt`,
+  creating the directory if needed, wrapping `IOException` into
+  `ReportExportException`.
+- Wired into `ConsoleApp` as new menu option **8. Export Grade Report**,
+  supporting summary-only, detailed-only, or both (Exit shifted from 8 to 9).
+- Unit tests: `ReportGeneratorTest` (summary/detailed content, empty-grades
+  case) and `FileExporterTest` (real file I/O against a temp directory).
