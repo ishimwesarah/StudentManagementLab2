@@ -132,3 +132,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
 - Unit tests: `CSVParserTest` (structure validation, malformed rows, blank
   lines) and `BulkImportServiceTest` (unknown student, out-of-range grade,
   unknown subject, subject-type mismatch, mixed success/failure files).
+
+### Test Coverage & Tooling
+- Fixed `pom.xml`: JaCoCo's `argLine` property was being overwritten by a
+  hardcoded surefire `argLine`, silently disabling coverage collection.
+  Now appended via `@{argLine}` instead of replacing it.
+- Excluded `Main`/`ConsoleApp` from the JaCoCo coverage target (console
+  I/O/wiring layer, not business logic - see README's "Test Coverage"
+  section for the full rationale). Overall coverage on the remaining
+  scope: ~63% (service.importing 98%, model 61%, service 57%).
+- `FileExporter`'s target directory is now constructor-injected rather
+  than hardcoded, so tests can point it at a temp directory directly
+  instead of relying on changing `user.dir` (which `java.nio.file`
+  ignores at runtime since it caches the working directory at JVM
+  startup).
