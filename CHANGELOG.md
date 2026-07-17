@@ -76,3 +76,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   (existing Exit option shifted from 5 to 6).
 - Unit tests: `GPACalculatorTest` (parameterized boundary tests for both
   GPA points and letter grades, plus cumulative-GPA and rounding tests).
+
+
+#### feature/class-statistics
+- Added `ClassStatisticsCalculator`: mean, median, mode, standard deviation,
+  highest/lowest, grade distribution buckets (A/B/C/D/F), per-subject
+  averages, and Regular vs. Honors student averages.
+- Added `ClassStatisticsPrinter`: renders the distribution as a bar chart,
+  prints the statistical summary, subject performance breakdown (Core vs.
+  Elective, with per-subject detail), and student type comparison.
+- Wired into `ConsoleApp` as new menu option **6. View Class Statistics**
+  (Exit shifted from 6 to 7).
+- Unit tests: `ClassStatisticsCalculatorTest` covering all calculations,
+  including edge cases (empty lists, ties in mode, boundary scores for
+  distribution buckets).
