@@ -90,3 +90,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
 - Unit tests: `ClassStatisticsCalculatorTest` covering all calculations,
   including edge cases (empty lists, ties in mode, boundary scores for
   distribution buckets).
+
+
+#### feature/search-students
+- Added `StudentSearchService`: search by exact student ID, partial
+  case-insensitive name match, average-grade range (inclusive), or
+  student type (Regular/Honors).
+- Wired into `ConsoleApp` as new menu option **7. Search Students**, with
+  a sub-menu for the four search modes (Exit shifted from 7 to 8).
+- Unit tests: `StudentSearchServiceTest` covering all four search modes,
+  including no-match and partial-match cases.
