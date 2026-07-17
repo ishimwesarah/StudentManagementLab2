@@ -3,9 +3,6 @@ package model;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-// Grade is just a simple "record" of one fact:
-// this student got this score, in this subject, on this date.
-// It does not extend anything and is not part of any hierarchy.
 public class Grade {
 
     private static int gradeCounter = 0;
@@ -16,16 +13,14 @@ public class Grade {
     private double grade;
     private String date;
 
+
     public Grade(String studentId, Subject subject, double grade) {
-        gradeCounter = gradeCounter + 1;
-        gradeId = "GRD" + String.format("%03d", gradeCounter);
+        gradeId = "GRD" + String.format("%03d", gradeCounter++);
 
         this.studentId = studentId;
         this.subject = subject;
         this.grade = grade;
 
-        // This just gets today's date and writes it as "dd-MM-yyyy",
-        // for example "04-07-2026".
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
         date = LocalDate.now().format(formatter);
     }
@@ -50,7 +45,12 @@ public class Grade {
         return date;
     }
 
-    // Turns a number score into a letter grade.
+    /**
+     * Converts the numeric score into a letter grade using a standard
+     * scale: A (90+), B (80-89), C (70-79), D (60-69), F (below 60).
+     *
+     * @return the letter grade corresponding to this grade's score
+     */
     public String getLetterGrade() {
         if (grade >= 90) {
             return "A";
@@ -64,6 +64,7 @@ public class Grade {
             return "F";
         }
     }
+
 
     public void displayGradeDetails() {
         System.out.println("Grade ID: " + gradeId);
