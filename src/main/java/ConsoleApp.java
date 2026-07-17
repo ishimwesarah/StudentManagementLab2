@@ -1,8 +1,10 @@
 import exception.InvalidGradeException;
+import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
 import service.*;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Scanner;
 
@@ -22,6 +24,8 @@ public class ConsoleApp {
     private final ClassStatisticsCalculator classStatisticsCalculator;
     private final ClassStatisticsPrinter classStatisticsPrinter;
     private final StudentSearchService studentSearchService;
+    private final ReportGenerator reportGenerator;
+    private final FileExporter fileExporter;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -48,6 +52,9 @@ public class ConsoleApp {
         this.classStatisticsPrinter = new ClassStatisticsPrinter(gradeManager, studentManager, classStatisticsCalculator);
 
         this.studentSearchService = new StudentSearchService(studentManager);
+
+        this.reportGenerator = new ReportGenerator(gradeAverageCalculator);
+        this.fileExporter = new FileExporter();
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -88,13 +95,16 @@ public class ConsoleApp {
                     searchStudents();
                     break;
                 case 8:
+                    exportGradeReport();
+                    break;
+                case 9:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 8.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 9.");
                     break;
             }
 
@@ -118,7 +128,8 @@ public class ConsoleApp {
         System.out.println("5. Calculate Student GPA");
         System.out.println("6. View Class Statistics");
         System.out.println("7. Search Students");
-        System.out.println("8. Exit");
+        System.out.println("8. Export Grade Report");
+        System.out.println("9. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -353,6 +364,63 @@ public class ConsoleApp {
             System.out.println(s.getStudentId() + " | " + s.getName() + " | " + s.getStudentType() + " | " + avg + "%");
         }
         System.out.println("---------------------------------------------");
+    }
+
+    private void exportGradeReport() {
+        System.out.println();
+        System.out.println("EXPORT GRADE REPORT");
+        System.out.println("---------------------------------------------");
+
+        Student student = promptForExistingStudent();
+        if (student == null) {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        List<Grade> grades = gradeManager.getGradesByStudent(student.getStudentId());
+
+        System.out.println();
+        System.out.println("Student: " + student.getStudentId() + " - " + student.getName());
+        System.out.println("Type: " + student.getStudentType() + " Student");
+        System.out.println("Total Grades: " + grades.size());
+
+        System.out.println();
+        System.out.println("Export options:");
+        System.out.println("1. Summary Report (overview only)");
+        System.out.println("2. Detailed Report (all grades)");
+        System.out.println("3. Both");
+        int option = readNumberBetween("Select option (1-3): ", 1, 3);
+
+        System.out.print("Enter filename (without extension): ");
+        String filename = scanner.nextLine().trim();
+
+        try {
+            if (option == 1 || option == 3) {
+                String summary = reportGenerator.generateSummaryReport(student, grades);
+                String summaryFilename = option == 3 ? filename + "_summary" : filename;
+                writeAndConfirm(summaryFilename, summary);
+            }
+            if (option == 2 || option == 3) {
+                String detailed = reportGenerator.generateDetailedReport(student, grades);
+                String detailedFilename = option == 3 ? filename + "_detailed" : filename;
+                writeAndConfirm(detailedFilename, detailed);
+            }
+        } catch (ReportExportException e) {
+            System.out.println();
+            System.out.println("\u2717 ERROR: ReportExportException");
+            System.out.println("  " + e.getMessage());
+        }
+    }
+
+    private void writeAndConfirm(String filename, String content) throws ReportExportException {
+        Path path = fileExporter.exportToFile(filename, content);
+        double sizeKb = fileExporter.fileSizeInKb(path);
+
+        System.out.println();
+        System.out.println("Report exported successfully!");
+        System.out.println("  File: " + path.getFileName());
+        System.out.println("  Location: " + path.getParent() + "/");
+        System.out.println("  Size: " + sizeKb + " KB");
     }
 
     private Student promptForExistingStudent() {
