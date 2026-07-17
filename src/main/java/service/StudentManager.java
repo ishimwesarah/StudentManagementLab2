@@ -1,5 +1,6 @@
 package service;
 
+import exception.StudentNotFoundException;
 import model.Student;
 
 import java.util.ArrayList;
@@ -28,14 +29,18 @@ public class StudentManager {
         return true;
     }
 
-    // Linear Search
-    public Student findStudent(String studentId) {
+    /**
+     * Linear search for a student by ID.
+     *
+     * @throws StudentNotFoundException if no student with this ID is registered
+     */
+    public Student findStudent(String studentId) throws StudentNotFoundException {
         for (int i = 0; i < studentCount; i++) {
             if (students[i].getStudentId().equalsIgnoreCase(studentId)) {
                 return students[i];
             }
         }
-        return null;
+        throw new StudentNotFoundException("Student with ID '" + studentId + "' not found in the system.");
     }
 
     public int getStudentCount() {
@@ -51,5 +56,17 @@ public class StudentManager {
             result.add(students[i]);
         }
         return result;
+    }
+
+    /**
+     * Returns the IDs of every registered student, in registration order.
+     * Used to build helpful error messages when a lookup fails.
+     */
+    public List<String> getAllStudentIds() {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < studentCount; i++) {
+            ids.add(students[i].getStudentId());
+        }
+        return ids;
     }
 }
