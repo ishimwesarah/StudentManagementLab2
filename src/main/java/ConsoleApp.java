@@ -28,6 +28,8 @@ public class ConsoleApp {
     private final GradeReportPrinter gradeReportPrinter;
     private final GPACalculator gpaCalculator;
     private final GPAReportPrinter gpaReportPrinter;
+    private final ClassStatisticsCalculator classStatisticsCalculator;
+    private final ClassStatisticsPrinter classStatisticsPrinter;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -49,6 +51,9 @@ public class ConsoleApp {
 
         this.gpaCalculator = new GPACalculator();
         this.gpaReportPrinter = new GPAReportPrinter(gradeManager, studentManager, gpaCalculator);
+
+        this.classStatisticsCalculator = new ClassStatisticsCalculator();
+        this.classStatisticsPrinter = new ClassStatisticsPrinter(gradeManager, studentManager, classStatisticsCalculator);
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -83,13 +88,16 @@ public class ConsoleApp {
                     viewStudentGpa();
                     break;
                 case 6:
+                    classStatisticsPrinter.printClassStatistics();
+                    break;
+                case 7:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 6.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 7.");
                     break;
             }
 
@@ -111,7 +119,8 @@ public class ConsoleApp {
         System.out.println("3. Record Grade");
         System.out.println("4. View Grade Report");
         System.out.println("5. Calculate Student GPA");
-        System.out.println("6. Exit");
+        System.out.println("6. View Class Statistics");
+        System.out.println("7. Exit");
         System.out.print("Enter choice: ");
     }
 
