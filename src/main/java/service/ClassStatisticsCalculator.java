@@ -19,6 +19,11 @@ import java.util.List;
  */
 public class ClassStatisticsCalculator {
 
+    /**
+     * @param grades the grades to average
+     * @return the simple mean of all given grades, or {@code 0.0} if the
+     *         list is null or empty
+     */
     public double mean(List<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
             return 0.0;
@@ -30,6 +35,10 @@ public class ClassStatisticsCalculator {
         return total / grades.size();
     }
 
+    /**
+     * @param grades the grades to find the median of
+     * @return the median grade, or {@code 0.0} if the list is null or empty
+     */
     public double median(List<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
             return 0.0;
@@ -52,6 +61,9 @@ public class ClassStatisticsCalculator {
     /**
      * Returns the most frequently occurring grade. If there's a tie, returns
      * the smallest of the tied values (a simple, deterministic tie-break).
+     *
+     * @param grades the grades to find the mode of
+     * @return the most frequent grade, or {@code 0.0} if the list is null or empty
      */
     public double mode(List<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
@@ -75,6 +87,13 @@ public class ClassStatisticsCalculator {
         return bestValue;
     }
 
+    /**
+     * Computes the population standard deviation of the given grades.
+     *
+     * @param grades the grades to measure spread across
+     * @return the standard deviation, or {@code 0.0} if there are fewer
+     *         than 2 grades (spread is undefined for 0 or 1 values)
+     */
     public double standardDeviation(List<Grade> grades) {
         if (grades == null || grades.size() < 2) {
             return 0.0;
@@ -90,6 +109,10 @@ public class ClassStatisticsCalculator {
         return Math.sqrt(variance);
     }
 
+    /**
+     * @param grades the grades to search
+     * @return the highest grade in the list, or {@code 0.0} if the list is empty
+     */
     public double highest(List<Grade> grades) {
         double max = Double.MIN_VALUE;
         for (Grade g : grades) {
@@ -100,6 +123,10 @@ public class ClassStatisticsCalculator {
         return grades.isEmpty() ? 0.0 : max;
     }
 
+    /**
+     * @param grades the grades to search
+     * @return the lowest grade in the list, or {@code 0.0} if the list is empty
+     */
     public double lowest(List<Grade> grades) {
         double min = Double.MAX_VALUE;
         for (Grade g : grades) {
@@ -112,7 +139,10 @@ public class ClassStatisticsCalculator {
 
     /**
      * Counts grades falling into each letter bucket: A (90-100), B (80-89),
-     * C (70-79), D (60-69), F (below 60). Index 0=A, 1=B, 2=C, 3=D, 4=F.
+     * C (70-79), D (60-69), F (below 60).
+     *
+     * @param grades the grades to bucket
+     * @return a 5-element array where index 0=A count, 1=B, 2=C, 3=D, 4=F
      */
     public int[] gradeDistribution(List<Grade> grades) {
         int[] buckets = new int[5];
@@ -133,6 +163,11 @@ public class ClassStatisticsCalculator {
         return buckets;
     }
 
+    /**
+     * @param grades      the grades to filter and average
+     * @param subjectName the exact subject name to match, e.g. "Mathematics"
+     * @return the average grade for that subject, or {@code 0.0} if none found
+     */
     public double averageForSubject(List<Grade> grades, String subjectName) {
         double total = 0.0;
         int count = 0;
@@ -146,19 +181,29 @@ public class ClassStatisticsCalculator {
     }
 
     /**
-     * Average of each Regular student's own average grade.
+     * @param students the students to filter and average
+     * @return the average of each Regular student's own average grade, or
+     *         {@code 0.0} if there are none
      */
     public double regularStudentAverage(List<Student> students) {
         return averageByType(students, RegularStudent.class);
     }
 
     /**
-     * Average of each Honors student's own average grade.
+     * @param students the students to filter and average
+     * @return the average of each Honors student's own average grade, or
+     *         {@code 0.0} if there are none
      */
     public double honorsStudentAverage(List<Student> students) {
         return averageByType(students, HonorsStudent.class);
     }
 
+    /**
+     * @param students the students to filter
+     * @param type     the concrete Student subtype to match
+     * @return the average of matching students' own average grades, or
+     *         {@code 0.0} if none match
+     */
     private double averageByType(List<Student> students, Class<?> type) {
         double total = 0.0;
         int count = 0;
@@ -171,6 +216,10 @@ public class ClassStatisticsCalculator {
         return count == 0 ? 0.0 : total / count;
     }
 
+    /**
+     * @param value the value to round
+     * @return {@code value} rounded to one decimal place
+     */
     public double round(double value) {
         return Math.round(value * 10) / 10.0;
     }

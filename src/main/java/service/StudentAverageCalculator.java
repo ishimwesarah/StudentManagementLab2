@@ -12,6 +12,11 @@ import java.util.List;
  */
 public class StudentAverageCalculator {
 
+    /**
+     * @param students the students to average
+     * @return the average of each student's own average grade, or
+     *         {@code 0.0} if the list is null or empty
+     */
     public double calculateClassAverage(List<Student> students) {
         if (students == null || students.isEmpty()) {
             return 0.0;
@@ -24,6 +29,10 @@ public class StudentAverageCalculator {
         return total / students.size();
     }
 
+    /**
+     * @param value the value to round
+     * @return {@code value} rounded to the nearest whole number
+     */
     public double round(double value) {
         return Math.round(value);
     }

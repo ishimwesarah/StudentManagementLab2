@@ -13,9 +13,11 @@ import java.util.List;
  * responsibility: parsing only - it doesn't know what a valid student ID
  * or grade range is, that's BulkImportService's job.
  *
- * Expected format:
+ * <p>Expected format:
+ * <pre>
  *   StudentID,SubjectName,SubjectType,Grade
  *   STU001,Mathematics,Core,85
+ * </pre>
  */
 public class CSVParser {
 
@@ -28,6 +30,11 @@ public class CSVParser {
      * to tolerate partial failures - see BulkImportService for how skipped
      * rows get reported. A missing/incorrect header, or an unreadable file,
      * throws immediately since that indicates the whole file is wrong.
+     *
+     * @param filePath path to the CSV file to read
+     * @return the successfully parsed rows, in file order
+     * @throws InvalidFileFormatException if the file can't be read, is
+     *                                     empty, or has the wrong header
      */
     public List<CSVGradeRecord> parse(Path filePath) throws InvalidFileFormatException {
         List<String> lines;

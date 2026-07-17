@@ -146,3 +146,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   instead of relying on changing `user.dir` (which `java.nio.file`
   ignores at runtime since it caches the working directory at JVM
   startup).
+
+### Documentation
+- Added JavaDoc (`@param`/`@return`/`@throws`) to public methods across
+  `model/` (Student, Subject, Grade) and `service/` (StudentManager,
+  GradeManager, GradeAverageCalculator, StudentAverageCalculator,
+  GPACalculator, ClassStatisticsCalculator, StudentSearchService,
+  CSVParser, BulkImportService).

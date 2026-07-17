@@ -35,6 +35,13 @@ public class BulkImportService {
      */
     private final Map<String, Subject> subjectsByName = new HashMap<>();
 
+    /**
+     * @param csvParser      parses the raw CSV file into records
+     * @param studentManager used to validate that each row's student exists
+     * @param gradeManager   receives the grades from successfully applied rows
+     * @param knownSubjects  the canonical Subject instances a row's subject
+     *                       name/type will be checked and matched against
+     */
     public BulkImportService(CSVParser csvParser, StudentManager studentManager, GradeManager gradeManager,
                              List<Subject> knownSubjects) {
         this.csvParser = csvParser;
@@ -45,6 +52,18 @@ public class BulkImportService {
         }
     }
 
+    /**
+     * Parses and imports every row in the given CSV file. Each row is
+     * validated independently - one bad row doesn't stop the rest from
+     * being processed, and every failure is recorded with its row number
+     * and a human-readable reason rather than aborting the import.
+     *
+     * @param filePath path to the CSV file to import
+     * @return a summary of how many rows succeeded/failed, and why
+     * @throws InvalidFileFormatException if the file itself can't be read
+     *                                     or has the wrong structure (this
+     *                                     propagates straight from CSVParser)
+     */
     public BulkImportResult importFromFile(Path filePath) throws InvalidFileFormatException {
         List<CSVGradeRecord> records = csvParser.parse(filePath);
 
@@ -78,9 +97,13 @@ public class BulkImportService {
     }
 
     /**
-     * Returns a human-readable failure reason, or null if the row is valid.
-     * Checked before touching StudentManager/GradeManager so a single bad
-     * row can't partially apply.
+     * Checks a single row for business-rule validity (subject known, type
+     * matches, grade is a well-formed number in range). Checked before
+     * touching StudentManager/GradeManager so a single bad row can't
+     * partially apply.
+     *
+     * @param record the parsed row to validate
+     * @return a human-readable failure reason, or {@code null} if the row is valid
      */
     private String validate(CSVGradeRecord record) {
         if (!subjectsByName.containsKey(record.getSubjectName().toLowerCase())) {

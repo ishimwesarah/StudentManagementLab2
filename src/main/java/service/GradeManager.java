@@ -5,17 +5,12 @@ import model.Grade;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Stores and retrieves Grade objects (composition).
- *
- * Single responsibility: managing the grade collection.
- * It does NOT calculate averages and does NOT print reports -
- * see GradeAverageCalculator and GradeReportPrinter for those.
- */
+
 public class GradeManager {
 
     private Grade[] grades = new Grade[200];
     private int gradeCount = 0;
+
 
     public boolean addGrade(Grade grade) {
         if (gradeCount >= grades.length) {
@@ -28,6 +23,9 @@ public class GradeManager {
         return true;
     }
 
+    /**
+     * @return the total number of grades currently stored, across all students
+     */
     public int getGradeCount() {
         return gradeCount;
     }
@@ -35,6 +33,9 @@ public class GradeManager {
     /**
      * Returns all grades belonging to the given student, in the order they
      * were recorded (oldest first).
+     *
+     * @param studentId the student ID to filter by (case-insensitive)
+     * @return that student's grades, or an empty list if they have none
      */
     public List<Grade> getGradesByStudent(String studentId) {
         List<Grade> result = new ArrayList<>();
@@ -47,7 +48,7 @@ public class GradeManager {
     }
 
     /**
-     * Returns every grade currently stored, across all students.
+     * @return every grade currently stored, across all students
      */
     public List<Grade> getAllGrades() {
         List<Grade> result = new ArrayList<>();

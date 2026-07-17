@@ -12,6 +12,12 @@ import java.util.List;
  */
 public class GPACalculator {
 
+    /**
+     * Converts a percentage score to GPA points on the standard 4.0 scale.
+     *
+     * @param percentage a score in the 0-100 range
+     * @return the corresponding GPA points, from 0.0 to 4.0
+     */
     public double toGpaPoints(double percentage) {
         if (percentage >= 93) return 4.0;
         if (percentage >= 90) return 3.7;
@@ -26,6 +32,14 @@ public class GPACalculator {
         return 0.0;
     }
 
+    /**
+     * Converts a percentage score to its letter-grade-with-modifier
+     * equivalent (e.g. "A-", "B+"), matching the same scale as
+     * {@link #toGpaPoints(double)}.
+     *
+     * @param percentage a score in the 0-100 range
+     * @return the corresponding letter grade
+     */
     public String toLetterGrade(double percentage) {
         if (percentage >= 93) return "A";
         if (percentage >= 90) return "A-";
@@ -42,6 +56,9 @@ public class GPACalculator {
 
     /**
      * Cumulative GPA is the simple average of each individual grade's GPA points.
+     *
+     * @param grades the grades to average
+     * @return the cumulative GPA, or {@code 0.0} if the list is null or empty
      */
     public double calculateCumulativeGpa(List<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
@@ -55,6 +72,10 @@ public class GPACalculator {
         return total / grades.size();
     }
 
+    /**
+     * @param value the value to round
+     * @return {@code value} rounded to two decimal places
+     */
     public double round(double value) {
         return Math.round(value * 100) / 100.0;
     }
