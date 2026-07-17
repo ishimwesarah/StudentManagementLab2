@@ -2,58 +2,63 @@ package service;
 
 import model.Grade;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Stores and retrieves Grade objects (composition).
+ * Computes averages over a list of grades.
  *
- * Single responsibility: managing the grade collection.
- * It does NOT calculate averages and does NOT print reports -
- * see GradeAverageCalculator and GradeReportPrinter for those.
+ * Single responsibility: numeric calculation only. This class has no idea
+ * where the grades came from or which student they belong to - it just
+ * takes a List<Grade> and does math. That makes it trivial to unit test
+ * and reusable for any future feature that needs a subject-type average
+ * (e.g. class-wide statistics in a later phase).
+ *
+ * Extracted from the old GradeManager, which used to mix storage,
+ * calculation, and console printing all in one class.
  */
-public class GradeManager {
+public class GradeAverageCalculator {
 
-    private Grade[] grades = new Grade[200];
-    private int gradeCount = 0;
+    public double round(double value) {
+        return Math.round(value * 10) / 10.0;
+    }
 
-    public boolean addGrade(Grade grade) {
-        if (gradeCount >= grades.length) {
-            System.out.println("Cannot add grade, storage is full.");
-            return false;
+    public double calculateCoreAverage(List<Grade> grades) {
+        return averageByType(grades, "Core");
+    }
+
+    public double calculateElectiveAverage(List<Grade> grades) {
+        return averageByType(grades, "Elective");
+    }
+
+    public double calculateOverallAverage(List<Grade> grades) {
+        if (grades == null || grades.isEmpty()) {
+            return 0.0;
         }
 
-        grades[gradeCount] = grade;
-        gradeCount = gradeCount + 1;
-        return true;
+        double total = 0.0;
+        for (Grade g : grades) {
+            total = total + g.getGrade();
+        }
+        return total / grades.size();
     }
 
-    public int getGradeCount() {
-        return gradeCount;
-    }
+    private double averageByType(List<Grade> grades, String subjectType) {
+        if (grades == null || grades.isEmpty()) {
+            return 0.0;
+        }
 
-    /**
-     * Returns all grades belonging to the given student, in the order they
-     * were recorded (oldest first).
-     */
-    public List<Grade> getGradesByStudent(String studentId) {
-        List<Grade> result = new ArrayList<>();
-        for (int i = 0; i < gradeCount; i++) {
-            if (grades[i].getStudentId().equalsIgnoreCase(studentId)) {
-                result.add(grades[i]);
+        double total = 0.0;
+        int count = 0;
+        for (Grade g : grades) {
+            if (g.getSubject().getSubjectType().equals(subjectType)) {
+                total = total + g.getGrade();
+                count = count + 1;
             }
         }
-        return result;
-    }
 
-    /**
-     * Returns every grade currently stored, across all students.
-     */
-    public List<Grade> getAllGrades() {
-        List<Grade> result = new ArrayList<>();
-        for (int i = 0; i < gradeCount; i++) {
-            result.add(grades[i]);
+        if (count == 0) {
+            return 0.0;
         }
-        return result;
+        return total / count;
     }
 }
