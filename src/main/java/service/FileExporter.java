@@ -9,17 +9,31 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Writes report text to disk under the reports/ directory. Single
+ * Writes report text to disk under a reports directory. Single
  * responsibility: file I/O only - it doesn't know or care how the report
  * content was built, that's ReportGenerator's job.
+ *
+ * The target directory is injected via the constructor (defaulting to
+ * "reports" relative to the working directory) rather than hardcoded,
+ * so tests can point this at a temp directory directly instead of trying
+ * to fake out the JVM's working directory - which doesn't actually work,
+ * since java.nio.file caches it at startup.
  */
 public class FileExporter {
 
-    private static final String REPORTS_DIRECTORY = "reports";
+    private final Path reportsDirectory;
+
+    public FileExporter() {
+        this(Paths.get("reports"));
+    }
+
+    public FileExporter(Path reportsDirectory) {
+        this.reportsDirectory = reportsDirectory;
+    }
 
     /**
-     * Writes the given content to reports/{filename}.txt, creating the
-     * reports/ directory if it doesn't exist yet.
+     * Writes the given content to {reportsDirectory}/{filename}.txt,
+     * creating the directory if it doesn't exist yet.
      *
      * @return the full path the file was written to
      * @throws ReportExportException if the directory can't be created or
@@ -27,10 +41,9 @@ public class FileExporter {
      */
     public Path exportToFile(String filename, String content) throws ReportExportException {
         try {
-            Path directory = Paths.get(REPORTS_DIRECTORY);
-            Files.createDirectories(directory);
+            Files.createDirectories(reportsDirectory);
 
-            Path filePath = directory.resolve(filename + ".txt");
+            Path filePath = reportsDirectory.resolve(filename + ".txt");
             Files.writeString(filePath, content, StandardCharsets.UTF_8);
 
             return filePath;
