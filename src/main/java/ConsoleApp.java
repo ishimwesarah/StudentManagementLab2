@@ -3,18 +3,9 @@ import exception.StudentNotFoundException;
 import model.*;
 import service.*;
 
+import java.util.List;
 import java.util.Scanner;
 
-/**
- * Owns the console menu loop and all of the application's wiring.
- *
- * Every dependency (managers, calculators, printers, subjects) is created
- * once in the constructor and held as an instance field - there are no
- * static fields here. That's the point of this class: Main used to hold
- * everything as static state, which made it awkward to reason about and
- * impossible to unit test. Now Main just does `new ConsoleApp().run()`,
- * and each collaborator below can be tested or swapped independently.
- */
 public class ConsoleApp {
 
     private final Scanner scanner;
@@ -30,6 +21,7 @@ public class ConsoleApp {
     private final GPAReportPrinter gpaReportPrinter;
     private final ClassStatisticsCalculator classStatisticsCalculator;
     private final ClassStatisticsPrinter classStatisticsPrinter;
+    private final StudentSearchService studentSearchService;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -54,6 +46,8 @@ public class ConsoleApp {
 
         this.classStatisticsCalculator = new ClassStatisticsCalculator();
         this.classStatisticsPrinter = new ClassStatisticsPrinter(gradeManager, studentManager, classStatisticsCalculator);
+
+        this.studentSearchService = new StudentSearchService(studentManager);
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -91,13 +85,16 @@ public class ConsoleApp {
                     classStatisticsPrinter.printClassStatistics();
                     break;
                 case 7:
+                    searchStudents();
+                    break;
+                case 8:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 7.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 8.");
                     break;
             }
 
@@ -120,11 +117,11 @@ public class ConsoleApp {
         System.out.println("4. View Grade Report");
         System.out.println("5. Calculate Student GPA");
         System.out.println("6. View Class Statistics");
-        System.out.println("7. Exit");
+        System.out.println("7. Search Students");
+        System.out.println("8. Exit");
         System.out.print("Enter choice: ");
     }
 
-    // Validation for the choices the user may enter
     private int readMenuChoice() {
         String input = scanner.nextLine();
         try {
@@ -283,14 +280,81 @@ public class ConsoleApp {
         gpaReportPrinter.printGpaReport(student);
     }
 
-    /**
-     * Repeatedly prompts for a Student ID until a valid one is entered or
-     * the user declines to try again. Centralizes the StudentNotFoundException
-     * handling so recordGrade(), viewGradeReport(), and viewStudentGpa() don't
-     * duplicate it.
-     *
-     * @return the found Student, or null if the user chose not to retry
-     */
+    private void searchStudents() {
+        System.out.println();
+        System.out.println("SEARCH STUDENTS");
+        System.out.println("---------------------------------------------");
+        System.out.println("Search options:");
+        System.out.println("1. By Student ID");
+        System.out.println("2. By Name (partial match)");
+        System.out.println("3. By Grade Range");
+        System.out.println("4. By Student Type");
+        int option = readNumberBetween("Select option (1-4): ", 1, 4);
+
+        List<Student> results;
+
+        switch (option) {
+            case 1:
+                System.out.print("Enter Student ID: ");
+                results = studentSearchService.searchById(scanner.nextLine());
+                break;
+            case 2:
+                System.out.print("Enter name (partial or full): ");
+                results = studentSearchService.searchByName(scanner.nextLine());
+                break;
+            case 3:
+                double min = readGradeBound("Enter minimum grade (0-100): ");
+                double max = readGradeBound("Enter maximum grade (0-100): ");
+                results = studentSearchService.searchByGradeRange(min, max);
+                break;
+            default:
+                System.out.println();
+                System.out.println("1. Regular");
+                System.out.println("2. Honors");
+                int typeChoice = readNumberBetween("Select type (1-2): ", 1, 2);
+                results = studentSearchService.searchByType(typeChoice == 1 ? "Regular" : "Honors");
+                break;
+        }
+
+        printSearchResults(results);
+    }
+
+    private double readGradeBound(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine();
+            try {
+                double value = Double.parseDouble(input.trim());
+                if (value >= 0 && value <= 100) {
+                    return value;
+                }
+                System.out.println("Please enter a value between 0 and 100.");
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
+        }
+    }
+
+    private void printSearchResults(List<Student> results) {
+        System.out.println();
+        System.out.println("SEARCH RESULTS (" + results.size() + " found)");
+        System.out.println("---------------------------------------------");
+
+        if (results.isEmpty()) {
+            System.out.println("No matching students found.");
+            System.out.println("---------------------------------------------");
+            return;
+        }
+
+        System.out.println("STU ID  | NAME            | TYPE    | AVG");
+        System.out.println("---------------------------------------------");
+        for (Student s : results) {
+            double avg = Math.round(s.calculateAverageGrade() * 10) / 10.0;
+            System.out.println(s.getStudentId() + " | " + s.getName() + " | " + s.getStudentType() + " | " + avg + "%");
+        }
+        System.out.println("---------------------------------------------");
+    }
+
     private Student promptForExistingStudent() {
         while (true) {
             System.out.print("Enter Student ID: ");
@@ -314,9 +378,6 @@ public class ConsoleApp {
         }
     }
 
-    // Input validation helpers
-
-    // 1. choices
     private int readNumberBetween(String prompt, int min, int max) {
         while (true) {
             System.out.print(prompt);
@@ -333,13 +394,6 @@ public class ConsoleApp {
         }
     }
 
-    // 2. grades
-
-    /**
-     * Parses and validates a single grade entry, throwing InvalidGradeException
-     * for either a non-numeric input or a value outside 0-100. Does not loop -
-     * that's promptForGrade()'s job.
-     */
     private double parseGrade() throws InvalidGradeException {
         System.out.print("Enter grade (0-100): ");
         String input = scanner.nextLine();
@@ -358,12 +412,6 @@ public class ConsoleApp {
         return value;
     }
 
-    /**
-     * Repeatedly prompts for a grade until a valid one is entered or the
-     * user declines to try again.
-     *
-     * @return a valid grade in [0, 100], or -1 if the user chose not to retry
-     */
     private double promptForGrade() {
         while (true) {
             try {
@@ -382,7 +430,6 @@ public class ConsoleApp {
         }
     }
 
-    // Sample data so the app has content
     private void loadSampleData() {
         RegularStudent aline = new RegularStudent("Aline Mwungeri", 16, "alne@school.sch", "+250780905");
         HonorsStudent jado = new HonorsStudent("Jado fils", 17, "jdo@school.sch", "+25078485");
@@ -396,14 +443,12 @@ public class ConsoleApp {
         studentManager.addStudent(emmy);
         studentManager.addStudent(jordan);
 
-        // Aline's grades
         addSampleGrade(aline, math, 75);
         addSampleGrade(aline, english, 80);
         addSampleGrade(aline, science, 78);
         addSampleGrade(aline, music, 85);
         addSampleGrade(aline, art, 74);
 
-        // Jado's grades
         addSampleGrade(jado, math, 88);
         addSampleGrade(jado, english, 82);
         addSampleGrade(jado, science, 90);
@@ -411,13 +456,11 @@ public class ConsoleApp {
         addSampleGrade(jado, art, 86);
         addSampleGrade(jado, pe, 81);
 
-        // Eke's grades
         addSampleGrade(eke, math, 40);
         addSampleGrade(eke, english, 48);
         addSampleGrade(eke, science, 42);
         addSampleGrade(eke, art, 50);
 
-        // Emmy's grades
         addSampleGrade(emmy, math, 95);
         addSampleGrade(emmy, english, 91);
         addSampleGrade(emmy, science, 94);
@@ -425,7 +468,6 @@ public class ConsoleApp {
         addSampleGrade(emmy, art, 92);
         addSampleGrade(emmy, pe, 95);
 
-        // Jordan's grades
         addSampleGrade(jordan, math, 70);
         addSampleGrade(jordan, english, 65);
         addSampleGrade(jordan, science, 68);
