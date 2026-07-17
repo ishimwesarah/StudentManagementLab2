@@ -24,4 +24,5 @@ imports/*.csv
 !reports/.gitkeep
 !imports/.gitkeep
 
+import_log_*.txt
 
