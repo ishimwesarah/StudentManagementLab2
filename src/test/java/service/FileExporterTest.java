@@ -17,30 +17,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FileExporterTest {
 
     private FileExporter fileExporter;
-    private Path originalWorkingDir;
     private Path tempDir;
 
     @BeforeEach
     void setUp() throws IOException {
-        fileExporter = new FileExporter();
-        // FileExporter always writes under "reports/" relative to the
-        // working directory, so for a clean test we create and clean up
-        // a reports/ folder inside a temp directory rather than touching
-        // the real project's reports/ folder.
         tempDir = Files.createTempDirectory("file-exporter-test");
-        originalWorkingDir = Path.of(System.getProperty("user.dir"));
-        System.setProperty("user.dir", tempDir.toString());
+        fileExporter = new FileExporter(tempDir);
     }
 
     @AfterEach
     void tearDown() throws IOException {
-        System.setProperty("user.dir", originalWorkingDir.toString());
         deleteRecursively(tempDir);
     }
 
     @Test
-    @DisplayName("exportToFile creates the reports directory and writes the content")
-    void exportToFile_writesContentToReportsDirectory() throws ReportExportException, IOException {
+    @DisplayName("exportToFile creates the target directory and writes the content")
+    void exportToFile_writesContentToTargetDirectory() throws ReportExportException, IOException {
         Path written = fileExporter.exportToFile("test_report", "Hello, report!");
 
         assertTrue(Files.exists(written));
@@ -51,7 +43,10 @@ class FileExporterTest {
     @Test
     @DisplayName("fileSizeInKb returns a positive value for a written file")
     void fileSizeInKb_returnsPositiveValueForRealFile() throws ReportExportException {
-        Path written = fileExporter.exportToFile("size_test", "Some content that takes up a bit of space.");
+        // fileSizeInKb rounds to one decimal place, so the content needs to be
+        // large enough that its size doesn't round down to 0.0.
+        String largeContent = "x".repeat(5000);
+        Path written = fileExporter.exportToFile("size_test", largeContent);
 
         double sizeKb = fileExporter.fileSizeInKb(written);
 
