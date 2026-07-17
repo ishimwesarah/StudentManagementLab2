@@ -153,3 +153,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   GradeManager, GradeAverageCalculator, StudentAverageCalculator,
   GPACalculator, ClassStatisticsCalculator, StudentSearchService,
   CSVParser, BulkImportService).
+
+### Test Coverage Improvements
+- Added `GradeReportPrinterTest`, `GPAReportPrinterTest`,
+  `ClassStatisticsPrinterTest` - the three printer classes that previously
+  only had manual/console verification, closing the largest remaining
+  coverage gap in the `service` package.
