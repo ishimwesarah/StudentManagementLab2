@@ -1,10 +1,21 @@
+import exception.InvalidFileFormatException;
 import exception.InvalidGradeException;
 import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
 import service.*;
+import service.importing.BulkImportResult;
+import service.importing.BulkImportService;
+import service.importing.CSVParser;
+import service.importing.ImportFailure;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
 
@@ -26,6 +37,7 @@ public class ConsoleApp {
     private final StudentSearchService studentSearchService;
     private final ReportGenerator reportGenerator;
     private final FileExporter fileExporter;
+    private final BulkImportService bulkImportService;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -62,6 +74,11 @@ public class ConsoleApp {
         this.music = new ElectiveSubject("Music", "MUS101");
         this.art = new ElectiveSubject("Art", "ART101");
         this.pe = new ElectiveSubject("Physical Education", "PE101");
+
+        this.bulkImportService = new BulkImportService(
+                new CSVParser(), studentManager, gradeManager,
+                List.of(math, english, science, music, art, pe)
+        );
     }
 
     public void run() {
@@ -98,13 +115,16 @@ public class ConsoleApp {
                     exportGradeReport();
                     break;
                 case 9:
+                    bulkImportGrades();
+                    break;
+                case 10:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 9.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 10.");
                     break;
             }
 
@@ -129,7 +149,8 @@ public class ConsoleApp {
         System.out.println("6. View Class Statistics");
         System.out.println("7. Search Students");
         System.out.println("8. Export Grade Report");
-        System.out.println("9. Exit");
+        System.out.println("9. Bulk Import Grades");
+        System.out.println("10. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -421,6 +442,76 @@ public class ConsoleApp {
         System.out.println("  File: " + path.getFileName());
         System.out.println("  Location: " + path.getParent() + "/");
         System.out.println("  Size: " + sizeKb + " KB");
+    }
+
+    private void bulkImportGrades() {
+        System.out.println();
+        System.out.println("BULK IMPORT GRADES");
+        System.out.println("---------------------------------------------");
+        System.out.println("Place your CSV file in: ./imports/");
+        System.out.println();
+        System.out.println("CSV Format Required:");
+        System.out.println("StudentID,SubjectName,SubjectType,Grade");
+        System.out.println("Example: STU001,Mathematics,Core,85");
+        System.out.println();
+
+        System.out.print("Enter filename (without extension): ");
+        String filename = scanner.nextLine().trim();
+        Path filePath = Paths.get("imports", filename + ".csv");
+
+        try {
+            BulkImportResult result = bulkImportService.importFromFile(filePath);
+            printImportSummary(result);
+            writeImportLog(result);
+        } catch (InvalidFileFormatException e) {
+            System.out.println();
+            System.out.println("\u2717 ERROR: InvalidFileFormatException");
+            System.out.println("  " + e.getMessage());
+        }
+    }
+
+    private void printImportSummary(BulkImportResult result) {
+        System.out.println();
+        System.out.println("IMPORT SUMMARY");
+        System.out.println("---------------------------------------------");
+        System.out.println("Total Rows: " + result.getTotalRows());
+        System.out.println("Successfully Imported: " + result.getSuccessCount());
+        System.out.println("Failed: " + result.getFailureCount());
+
+        if (result.getFailureCount() > 0) {
+            System.out.println();
+            System.out.println("Failed Records:");
+            for (ImportFailure failure : result.getFailures()) {
+                System.out.println("  Row " + failure.getRowNumber() + ": " + failure.getReason());
+            }
+        }
+    }
+
+    private void writeImportLog(BulkImportResult result) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        String logFilename = "import_log_" + LocalDate.now().format(formatter) + ".txt";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("BULK IMPORT LOG\n");
+        sb.append("Total Rows: ").append(result.getTotalRows()).append("\n");
+        sb.append("Successfully Imported: ").append(result.getSuccessCount()).append("\n");
+        sb.append("Failed: ").append(result.getFailureCount()).append("\n\n");
+
+        for (ImportFailure failure : result.getFailures()) {
+            sb.append("Row ").append(failure.getRowNumber()).append(": ").append(failure.getReason()).append("\n");
+        }
+
+        try {
+            Path logDir = Paths.get("imports");
+            Files.createDirectories(logDir);
+            Path logPath = logDir.resolve(logFilename);
+            Files.writeString(logPath, sb.toString(), StandardCharsets.UTF_8);
+            System.out.println();
+            System.out.println("See " + logFilename + " for details.");
+        } catch (IOException e) {
+            System.out.println();
+            System.out.println("(Could not write import log: " + e.getMessage() + ")");
+        }
     }
 
     private Student promptForExistingStudent() {
