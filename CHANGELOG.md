@@ -114,3 +114,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   supporting summary-only, detailed-only, or both (Exit shifted from 8 to 9).
 - Unit tests: `ReportGeneratorTest` (summary/detailed content, empty-grades
   case) and `FileExporterTest` (real file I/O against a temp directory).
+
+#### feature/bulk-import
+- Added `InvalidFileFormatException` for malformed or unreadable CSV files.
+- Moved CSV/import-specific classes into a `service.importing` subpackage
+  to keep `service` from growing unbounded: `CSVGradeRecord`,
+  `ImportFailure`, `BulkImportResult`, `CSVParser`, `BulkImportService`.
+- `CSVParser`: reads and validates CSV structure only (header, column count) -
+  parsing is fully separated from business validation.
+- `BulkImportService`: validates each row (student exists, subject known,
+  subject type matches, grade in range) and applies valid rows to the real
+  `StudentManager`/`GradeManager`. Invalid rows are skipped, not thrown -
+  the whole import continues and reports failures per row.
+- Wired into `ConsoleApp` as new menu option **9. Bulk Import Grades**,
+  reading from `imports/{filename}.csv` and writing a dated log file to
+  `imports/import_log_YYYYMMDD.txt` (Exit shifted from 9 to 10).
+- Unit tests: `CSVParserTest` (structure validation, malformed rows, blank
+  lines) and `BulkImportServiceTest` (unknown student, out-of-range grade,
+  unknown subject, subject-type mismatch, mixed success/failure files).
