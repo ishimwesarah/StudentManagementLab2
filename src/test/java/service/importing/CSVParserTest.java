@@ -1,4 +1,4 @@
-package service;
+package service.importing;
 
 import exception.InvalidFileFormatException;
 import org.junit.jupiter.api.AfterEach;

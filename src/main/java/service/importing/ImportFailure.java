@@ -1,4 +1,4 @@
-package service;
+package service.importing;
 
 /**
  * A single row that failed to import, with the reason why.

@@ -1,4 +1,4 @@
-package service;
+package service.importing;
 
 /**
  * One parsed row from a bulk-import CSV file: StudentID,SubjectName,SubjectType,Grade.
