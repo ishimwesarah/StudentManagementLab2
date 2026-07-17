@@ -61,12 +61,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   corrected `exec-maven-plugin`'s `mainClass` to `Main`, and added
   `-XX:+EnableDynamicAgentLoading -Xshare:off` to quiet harmless JVM
   warnings triggered by Mockito's dynamic agent loading.
-- 
-<!--
+
+
 ### Phase 4 — New Features
-- feature/gpa-calculator
-- feature/class-statistics
-- feature/search-students
-- feature/export-report
-- feature/bulk-import
--->
+
+#### feature/gpa-calculator
+- Added `GPACalculator`: converts percentage grades to the 4.0 GPA scale
+  (`toGpaPoints`, `toLetterGrade`) and computes cumulative GPA across a
+  student's grades.
+- Added `GPAReportPrinter`: prints per-subject GPA breakdown, cumulative
+  GPA, overall letter grade, class rank, and a short performance analysis
+  (comparing against the 3.5 GPA threshold and class average).
+- Wired into `ConsoleApp` as new menu option **5. Calculate Student GPA**
+  (existing Exit option shifted from 5 to 6).
+- Unit tests: `GPACalculatorTest` (parameterized boundary tests for both
+  GPA points and letter grades, plus cumulative-GPA and rounding tests).
