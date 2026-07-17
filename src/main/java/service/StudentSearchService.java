@@ -23,8 +23,11 @@ public class StudentSearchService {
     }
 
     /**
-     * Exact match search by student ID (case-insensitive), returning at
-     * most one result.
+     * Exact match search by student ID (case-insensitive).
+     *
+     * @param studentId the ID to search for
+     * @return a single-element list containing the match, or an empty
+     *         list if no student has that ID
      */
     public List<Student> searchById(String studentId) {
         List<Student> result = new ArrayList<>();
@@ -39,6 +42,9 @@ public class StudentSearchService {
 
     /**
      * Partial, case-insensitive match against student name.
+     *
+     * @param nameQuery the text to search for anywhere in a student's name
+     * @return every student whose name contains the query, in roster order
      */
     public List<Student> searchByName(String nameQuery) {
         List<Student> result = new ArrayList<>();
@@ -52,8 +58,10 @@ public class StudentSearchService {
     }
 
     /**
-     * Students whose current average grade falls within [minGrade, maxGrade],
-     * inclusive.
+     * @param minGrade the lower bound, inclusive
+     * @param maxGrade the upper bound, inclusive
+     * @return every student whose current average grade falls within
+     *         [minGrade, maxGrade]
      */
     public List<Student> searchByGradeRange(double minGrade, double maxGrade) {
         List<Student> result = new ArrayList<>();
@@ -67,7 +75,9 @@ public class StudentSearchService {
     }
 
     /**
-     * Students matching the given type ("Regular" or "Honors"), case-insensitive.
+     * @param studentType the type to match, "Regular" or "Honors"
+     *                     (case-insensitive)
+     * @return every student of the matching type
      */
     public List<Student> searchByType(String studentType) {
         List<Student> result = new ArrayList<>();
