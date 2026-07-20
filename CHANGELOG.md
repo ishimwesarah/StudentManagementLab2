@@ -159,3 +159,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   `ClassStatisticsPrinterTest` - the three printer classes that previously
   only had manual/console verification, closing the largest remaining
   coverage gap in the `service` package.
+### CI/CD Pipeline (ci/github-actions)
+- Added `.github/workflows/ci.yml`: a GitHub Actions workflow that
+  automatically runs `mvn clean test` on every push and pull request
+  targeting `main` or `develop`, giving automated build/test
+  verification without any manual step.
+- Uploads the JaCoCo coverage report as a downloadable CI artifact on
+  every run, so coverage can be inspected without regenerating it
+  locally.
+- Note: a static analysis tool (e.g. SpotBugs) was considered but not
+  added - the graded Lab 2 rubric does not list it as a requirement
+  (it only appears in the broader course objectives), and adding a new
+  dependency purely for that wasn't judged worth the added complexity.
