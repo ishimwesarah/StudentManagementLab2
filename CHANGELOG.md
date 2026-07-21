@@ -171,3 +171,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   added - the graded Lab 2 rubric does not list it as a requirement
   (it only appears in the broader course objectives), and adding a new
   dependency purely for that wasn't judged worth the added complexity.
+
+### CI Workflow Refinement (chore/ci-simplify)
+- Removed the JaCoCo coverage report upload step from
+  `.github/workflows/ci.yml`. Coverage is still generated on every CI
+  run (via `mvn clean test`, which triggers JaCoCo's configured
+  `prepare-agent`/`report` goals) - this change only stops it from
+  being saved as a downloadable artifact, since that wasn't being used.
+- CI now does exactly one thing: check out the code, set up JDK 17,
+  and run the full test suite on every push/PR to `main` or `develop`.
