@@ -1,136 +1,66 @@
 # Student Grade Management System
 
-A console application for managing student grades, built with core OOP
-principles (encapsulation, inheritance, polymorphism, abstraction, composition)
-and hardened with SOLID principles, custom exception handling, and JUnit 5 /
-Mockito test coverage.
+A console app for tracking student grades - built in Java, starting from a
+simple Lab 1 version and refactored into something closer to a real,
+maintainable project: proper class separation, custom exceptions, unit
+tests, and a Git workflow to match.
 
-## Requirements
-
-- JDK 17 or later
-- Maven 3.8+ (or use IntelliJ's bundled Maven via the Maven tool window)
-
-## Project Structure
+## What's in the project
 
 ```
 src/main/java/
-  Main.java                    # Entry point
-  ConsoleApp.java               # Console menu loop, wiring (constructor-injected dependencies)
-  model/                        # Domain entities
-    Student.java (abstract), RegularStudent.java, HonorsStudent.java
-    Subject.java (abstract), CoreSubject.java, ElectiveSubject.java
-    Grade.java, Gradable.java (interface)
-  service/                      # Operations on domain entities
-    StudentManager.java, GradeManager.java        # storage/CRUD
-    StudentAverageCalculator.java, GradeAverageCalculator.java   # pure calculation
-    StudentReportPrinter.java, GradeReportPrinter.java            # console formatting
-    GPACalculator.java, GPAReportPrinter.java
-    ClassStatisticsCalculator.java, ClassStatisticsPrinter.java
-    StudentSearchService.java
-    ReportGenerator.java, FileExporter.java
-  service/importing/            # CSV bulk-import (kept separate to avoid
-                                 # bloating the service package)
-    CSVParser.java, CSVGradeRecord.java
-    BulkImportService.java, BulkImportResult.java, ImportFailure.java
-  exception/                    # Custom checked exceptions
-    GradeSystemException.java (abstract base)
-    StudentNotFoundException.java, InvalidGradeException.java
-    ReportExportException.java, InvalidFileFormatException.java
+  Main.java            - entry point, just starts ConsoleApp
+  ConsoleApp.java      - the menu loop, wires everything together
 
-src/test/java/
-  model/                         # Mirrors src/main/java structure
-  service/
-  service/importing/
+  model/               - Student, Subject, Grade and their subtypes
+  service/             - managers, calculators, printers, search
+  service/importing/   - CSV parsing and bulk import
+  exception/           - custom exceptions
+
+src/test/java/         - mirrors the structure above
 ```
 
-## Build
-
-```bash
-mvn clean compile
-```
-
-Or in IntelliJ: open the **Maven** tool window (right edge) → Lifecycle → double-click **compile**.
-
-## Run the Application
-
-```bash
-mvn compile exec:java
-```
-
-Or in IntelliJ: right-click `Main.java` → **Run**.
-
-## Run Tests
-
-```bash
-mvn test
-```
-
-Or in IntelliJ: right-click `src/test/java` → **Run 'All Tests'**.
-
-Currently: 125+ tests, all passing, covering the model, service, and
-service.importing packages.
-
-## Test Coverage
-
-Coverage is measured with JaCoCo. After running `mvn test`, open the report:
-
-```
-target/site/jacoco/index.html
-```
-
-**Scope note:** `Main` and `ConsoleApp` are excluded from the coverage
-target. They are the console I/O and menu-wiring layer - testing them
-meaningfully would require feeding fake `System.in` input rather than
-testing real logic, and the Phase 1 SOLID refactor already moved all
-actual business logic out of them into `model/`, `service/`, and
-`service.importing/`, which are the packages measured and targeted for
-coverage.
+Each service class does one job - a manager stores data, a calculator
+does the math, a printer formats the output. That split is what makes
+most of this testable without a lot of setup.
 
 ## Features
 
-1. **Add Student** - Regular (50% passing) or Honors (60% passing, honors
-   eligibility tracking)
-2. **View Students** - Full roster with averages, status, and honors
-   eligibility
-3. **Record Grade** - Core or Elective subjects, with retry-on-invalid-input
-   handling
-4. **View Grade Report** - Per-student grade history with core/elective/
-   overall averages
-5. **Calculate Student GPA** - Converts percentages to a 4.0 GPA scale,
-   including per-subject breakdown and class rank
-6. **View Class Statistics** - Mean, median, mode, standard deviation, grade
-   distribution, subject and Regular-vs-Honors comparisons
-7. **Search Students** - By ID, partial name match, grade range, or student
-   type
-8. **Export Grade Report** - Summary and/or detailed report to a `.txt` file
-   under `reports/`
-9. **Bulk Import Grades** - Import multiple grades from a CSV file under
-   `imports/`, with per-row validation and a dated import log
+1. Add a student (Regular or Honors)
+2. View all students
+3. Record a grade
+4. View a student's grade report
+5. Calculate GPA (4.0 scale, with class rank)
+6. View class statistics (mean, median, mode, std dev, distribution)
+7. Search students by ID, name, grade range, or type
+8. Export a grade report to a text file
+9. Bulk import grades from a CSV file
 
-## Exception Handling
+## Exceptions
 
-Custom checked exceptions (all extending `GradeSystemException`) replace
-silent failures and generic exception handling:
+Four custom exceptions, all extending a shared `GradeSystemException` base:
+`StudentNotFoundException`, `InvalidGradeException`, `ReportExportException`,
+and `InvalidFileFormatException`. Each one gets caught where it matters in
+`ConsoleApp`, usually with a clear message and a chance to try again.
 
-- `StudentNotFoundException` - unknown student ID lookup
-- `InvalidGradeException` - non-numeric or out-of-range grade input
-- `ReportExportException` - file-write failure during export
-- `InvalidFileFormatException` - malformed or unreadable CSV during import
+## Test coverage
 
-Each is caught at the point of use in `ConsoleApp` with a clear error
-message and, where it makes sense, a "Try again? (Y/N)" retry prompt.
+Coverage is measured with JaCoCo - run `mvn test` and open
+`target/site/jacoco/index.html` to see the report.
 
-## Git Workflow
+`Main` and `ConsoleApp` are left out of the coverage target on purpose.
+They're just the console menu and input handling, not real logic - testing
+them properly would mean simulating fake keyboard input rather than
+testing anything meaningful. All the actual logic lives in `model/`,
+`service/`, and `service/importing/`, and that's what's measured.
 
-This project follows a feature-branch workflow:
+## Git workflow
 
-- `main` - production-ready code only
-- `develop` - integration branch, features merge here first
-- `feature/*` - one branch per feature/refactor (e.g. `feature/gpa-calculator`)
-- `bugfix/*` - bug fixes found during development
+- `main` - the stable, finished version
+- `develop` - where everything gets integrated before it's considered done
+- `feature/*`, `bugfix/*`, `docs/*` - one branch per piece of work
 
-Commits follow the [Conventional Commits](https://www.conventionalcommits.org/)
-format: `feat: ...`, `fix: ...`, `refactor: ...`, `test: ...`, `docs: ...`,
-`chore: ...`.
+Commits use a simple prefix convention (`feat:`, `fix:`, `refactor:`,
+`test:`, `docs:`, `chore:`) so the history is easy to scan.
 
-See `CHANGELOG.md` for a phase-by-phase history of what's been built.
+See `CHANGELOG.md` for the full history of what was built and when.
