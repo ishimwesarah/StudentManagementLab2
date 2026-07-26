@@ -1,5 +1,6 @@
 package service;
 
+import model.Calculable;
 import model.Student;
 
 import java.util.List;
@@ -10,7 +11,19 @@ import java.util.List;
  * Single responsibility: numeric calculation only. No storage, no printing.
  * Extracted from the old StudentManager, which used to mix all three concerns.
  */
-public class StudentAverageCalculator {
+public class StudentAverageCalculator implements Calculable<Student> {
+
+    /**
+     * Satisfies the Calculable contract by delegating to the class
+     * average - the most natural single-number summary of a list of
+     * students. This is the same interface GradeAverageCalculator
+     * implements, but with T filled in as Student instead of Grade -
+     * proof the generic design genuinely works for two unrelated types.
+     */
+    @Override
+    public double calculate(List<Student> students) {
+        return calculateClassAverage(students);
+    }
 
     /**
      * @param students the students to average
