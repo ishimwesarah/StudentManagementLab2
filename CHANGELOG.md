@@ -205,3 +205,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   `BinaryGradeExporterTest` (the last including a full serialize/
   deserialize round-trip test, proving real objects survive the export
   and can be read back intact).
+
+### Searchable Interface (feature/searchable-interface)
+- Added `Searchable` interface in `model/` (alongside `Gradable` and
+  `Exportable`) - deliberately narrow, exposing only `search(String
+  query)`, the one operation genuinely shared across every search
+  strategy. Grade-range and type-based filtering stay as extra methods
+  on the concrete classes that support them, rather than being forced
+  onto every implementer - Interface Segregation applied directly.
+- `StudentSearchService` now implements `Searchable`, delegating
+  `search()` to its existing name-based partial matching. All four
+  original search methods remain unchanged and fully usable.
+- Added `RegexStudentSearchService` - a second, genuinely different
+  implementer, matching student name/email against a regex pattern
+  (`java.util.regex.Pattern`/`Matcher`), with a clear `IllegalArgumentException`
+  for malformed patterns rather than letting a cryptic internal error
+  leak through.
+- Wired into `ConsoleApp`'s existing search sub-menu as new option
+  **5. By Pattern (regex on name/email)**.
+- Unit tests: `StudentSearchServiceTest` (updated for the new `search()`
+  method) and `RegexStudentSearchServiceTest`, including a dedicated
+  test proving both implementations are genuinely interchangeable
+  through the shared `Searchable` type - the actual point of the
+  interface, not just asserted but verified.
