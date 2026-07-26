@@ -42,6 +42,22 @@ class StudentSearchServiceTest {
     }
 
     @Test
+    @DisplayName("search() (the Searchable interface method) delegates to name-based matching")
+    void search_delegatesToNameMatching() {
+        List<Student> results = searchService.search("john");
+
+        assertEquals(2, results.size());
+        assertTrue(results.contains(aliceJohnson));
+        assertTrue(results.contains(bobJohnson));
+    }
+
+    @Test
+    @DisplayName("search() returns an empty list when nothing matches")
+    void search_noMatch_returnsEmptyList() {
+        assertTrue(searchService.search("xyz").isEmpty());
+    }
+
+    @Test
     @DisplayName("searchById finds an exact, case-insensitive match")
     void searchById_exactMatch_findsStudent() {
         List<Student> results = searchService.searchById(aliceJohnson.getStudentId().toLowerCase());

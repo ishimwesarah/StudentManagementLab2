@@ -38,6 +38,7 @@ public class ConsoleApp {
     private final ClassStatisticsCalculator classStatisticsCalculator;
     private final ClassStatisticsPrinter classStatisticsPrinter;
     private final StudentSearchService studentSearchService;
+    private final RegexStudentSearchService regexStudentSearchService;
     private final ReportGenerator reportGenerator;
     private final FileExporter fileExporter;
     private final BulkImportService bulkImportService;
@@ -68,6 +69,7 @@ public class ConsoleApp {
         this.classStatisticsPrinter = new ClassStatisticsPrinter(gradeManager, studentManager, classStatisticsCalculator);
 
         this.studentSearchService = new StudentSearchService(studentManager);
+        this.regexStudentSearchService = new RegexStudentSearchService(studentManager);
 
         this.reportGenerator = new ReportGenerator(gradeAverageCalculator);
         this.fileExporter = new FileExporter();
@@ -335,7 +337,8 @@ public class ConsoleApp {
         System.out.println("2. By Name (partial match)");
         System.out.println("3. By Grade Range");
         System.out.println("4. By Student Type");
-        int option = readNumberBetween("Select option (1-4): ", 1, 4);
+        System.out.println("5. By Pattern (regex on name/email)");
+        int option = readNumberBetween("Select option (1-5): ", 1, 5);
 
         List<Student> results;
 
@@ -353,16 +356,35 @@ public class ConsoleApp {
                 double max = readGradeBound("Enter maximum grade (0-100): ");
                 results = studentSearchService.searchByGradeRange(min, max);
                 break;
-            default:
+            case 4:
                 System.out.println();
                 System.out.println("1. Regular");
                 System.out.println("2. Honors");
                 int typeChoice = readNumberBetween("Select type (1-2): ", 1, 2);
                 results = studentSearchService.searchByType(typeChoice == 1 ? "Regular" : "Honors");
                 break;
+            default:
+                results = searchByPattern();
+                break;
         }
 
         printSearchResults(results);
+    }
+
+    private List<Student> searchByPattern() {
+        System.out.println();
+        System.out.println("Enter a regex pattern to match against name or email.");
+        System.out.println("Example: .*@university\\.edu$   (matches a domain)");
+        System.out.print("Pattern: ");
+        String pattern = scanner.nextLine();
+
+        try {
+            return regexStudentSearchService.search(pattern);
+        } catch (IllegalArgumentException e) {
+            System.out.println();
+            System.out.println("\u2717 " + e.getMessage());
+            return List.of();
+        }
     }
 
     private double readGradeBound(String prompt) {
