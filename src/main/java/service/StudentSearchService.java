@@ -2,6 +2,7 @@ package service;
 
 import model.HonorsStudent;
 import model.RegularStudent;
+import model.Searchable;
 import model.Student;
 
 import java.util.ArrayList;
@@ -14,12 +15,22 @@ import java.util.List;
  * StudentManager for the underlying data, same pattern as the other
  * printers - no duplicated storage here.
  */
-public class StudentSearchService {
+public class StudentSearchService implements Searchable {
 
     private final StudentManager studentManager;
 
     public StudentSearchService(StudentManager studentManager) {
         this.studentManager = studentManager;
+    }
+
+    /**
+     * Satisfies the Searchable contract by delegating to name-based
+     * partial matching - the most natural default meaning of "search"
+     * for this string-based strategy.
+     */
+    @Override
+    public List<Student> search(String query) {
+        return searchByName(query);
     }
 
     /**
