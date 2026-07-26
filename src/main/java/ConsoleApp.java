@@ -4,6 +4,9 @@ import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
 import service.*;
+import service.exporting.BinaryGradeExporter;
+import service.exporting.CsvGradeExporter;
+import service.exporting.JsonGradeExporter;
 import service.importing.BulkImportResult;
 import service.importing.BulkImportService;
 import service.importing.CSVParser;
@@ -38,6 +41,7 @@ public class ConsoleApp {
     private final ReportGenerator reportGenerator;
     private final FileExporter fileExporter;
     private final BulkImportService bulkImportService;
+    private final List<Exportable> gradeDataExporters;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -67,6 +71,12 @@ public class ConsoleApp {
 
         this.reportGenerator = new ReportGenerator(gradeAverageCalculator);
         this.fileExporter = new FileExporter();
+
+        this.gradeDataExporters = List.of(
+                new CsvGradeExporter(),
+                new JsonGradeExporter(),
+                new BinaryGradeExporter()
+        );
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -118,13 +128,16 @@ public class ConsoleApp {
                     bulkImportGrades();
                     break;
                 case 10:
+                    exportMultiFormat();
+                    break;
+                case 11:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 10.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 11.");
                     break;
             }
 
@@ -150,7 +163,8 @@ public class ConsoleApp {
         System.out.println("7. Search Students");
         System.out.println("8. Export Grade Report");
         System.out.println("9. Bulk Import Grades");
-        System.out.println("10. Exit");
+        System.out.println("10. Multi-Format Export");
+        System.out.println("11. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -511,6 +525,38 @@ public class ConsoleApp {
         } catch (IOException e) {
             System.out.println();
             System.out.println("(Could not write import log: " + e.getMessage() + ")");
+        }
+    }
+
+    private void exportMultiFormat() {
+        System.out.println();
+        System.out.println("EXPORT GRADE REPORT (Multi-Format)");
+        System.out.println("---------------------------------------------");
+
+        Student student = promptForExistingStudent();
+        if (student == null) {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        List<Grade> grades = gradeManager.getGradesByStudent(student.getStudentId());
+        if (grades.isEmpty()) {
+            System.out.println("No grades recorded for this student - nothing to export.");
+            return;
+        }
+
+        System.out.println();
+        System.out.println("Processing with NIO.2 Streaming...");
+
+        String filename = student.getStudentId() + "_grades";
+
+        for (Exportable exporter : gradeDataExporters) {
+            try {
+                exporter.export(grades, filename);
+                System.out.println(exporter.getFormatName() + " Export completed");
+            } catch (ReportExportException e) {
+                System.out.println(exporter.getFormatName() + " Export failed: " + e.getMessage());
+            }
         }
     }
 
