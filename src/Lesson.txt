@@ -1,0 +1,586 @@
+====================================================================
+LESSONS LEARNED - Student Grade Management System (Lab 2)
+====================================================================
+
+This document summarizes everything covered while refactoring the Lab 1
+console app into a SOLID-compliant, tested, exception-safe system with
+a real Git workflow. Organized by topic, not strictly by the order we
+covered it, so you can use this as a study reference.
+
+
+====================================================================
+1. SOLID PRINCIPLES - WHY WE SPLIT CLASSES THE WAY WE DID
+====================================================================
+
+SINGLE RESPONSIBILITY PRINCIPLE (SRP)
+--------------------------------------
+"A class should have one reason to change."
+
+Original problem: GradeManager did THREE unrelated jobs - storing data,
+calculating averages, and printing reports. If the report format needed
+to change, you'd be editing the same class responsible for your actual
+data - increasing the risk of breaking something unrelated.
+
+The fix - split into three focused classes:
+  - GradeManager        -> storage/CRUD only (add, get, find)
+  - GradeAverageCalculator -> pure math only (no storage, no printing)
+  - GradeReportPrinter   -> console formatting only
+
+Same pattern repeated for every new feature in Phase 4:
+  - GPACalculator + GPAReportPrinter
+  - ClassStatisticsCalculator + ClassStatisticsPrinter
+  - ReportGenerator (builds text) + FileExporter (writes to disk)
+  - CSVParser (parses structure) + BulkImportService (validates/applies)
+
+KEY INSIGHT: SRP and testability are the same coin, two sides. A class
+that only does math, with no side effects, is the cheapest and safest
+thing to unit test. This is WHY the Phase 1 refactor came before Phase 3
+testing - you can't easily test what isn't already separated out.
+
+OPEN/CLOSED PRINCIPLE (OCP)
+----------------------------
+"Open for extension, closed for modification."
+
+Example: GPA conversion logic lives in its own GPACalculator class,
+separate from Grade or Student. If we ever needed a second grading scale
+(e.g. Pass/Fail, or a different university's scale), we could add a new
+calculator class WITHOUT touching any existing, working code.
+
+DEPENDENCY INVERSION PRINCIPLE (DIP) / DEPENDENCY INJECTION
+-------------------------------------------------------------
+Original Main.java used STATIC fields for everything (managers, subjects,
+scanner). Static state is global - anything can read/change it, and it's
+created once whether you want it or not. This makes testing nearly
+impossible (you can't swap in a fake StudentManager for a test).
+
+The fix: ConsoleApp receives its dependencies as CONSTRUCTOR PARAMETERS
+instead of creating them as static fields:
+
+    public GPAReportPrinter(GradeManager gradeManager,
+                             StudentManager studentManager,
+                             GPACalculator gpaCalculator) {
+        this.gradeManager = gradeManager;
+        ...
+    }
+
+This is called "constructor injection." Whoever creates the object
+decides what real (or fake, for testing) dependencies to hand it.
+
+INTERFACE SEGREGATION PRINCIPLE (ISP) - in spirit
+---------------------------------------------------
+The lab brief suggested extracting interfaces like Searchable/Exportable.
+We did NOT create these literal interfaces because ISP only pays off
+when you have TWO OR MORE classes that need to be treated interchangeably.
+We only ever had one searcher, one exporter, one calculator - adding an
+interface with a single implementer is extra ceremony with no benefit.
+This is a principle called YAGNI - "You Aren't Gonna Need It." We DID
+follow ISP's SPIRIT though: StudentSearchService exposes four small,
+focused methods (searchById, searchByName, searchByGradeRange,
+searchByType) instead of one giant method with a pile of optional
+parameters most callers wouldn't need.
+
+
+====================================================================
+2. EXCEPTION HANDLING
+====================================================================
+
+CHECKED vs UNCHECKED EXCEPTIONS
+---------------------------------
+Checked exceptions (extend Exception) force the COMPILER to make every
+caller either handle them (try/catch) or declare them (throws). You
+cannot forget to deal with them - the code won't even compile.
+
+Unchecked exceptions (extend RuntimeException) can be thrown from
+anywhere silently, no compiler enforcement.
+
+We made GradeSystemException (our shared base class) a CHECKED
+exception on purpose - it represents expected, recoverable business
+conditions ("this student doesn't exist"), not programmer bugs. Checked
+exceptions are the right fit here because we WANT the compiler forcing
+every caller to think about the failure case.
+
+    public abstract class GradeSystemException extends Exception {
+        public GradeSystemException(String message) {
+            super(message);
+        }
+    }
+
+    public class StudentNotFoundException extends GradeSystemException { ... }
+    public class InvalidGradeException     extends GradeSystemException { ... }
+    public class ReportExportException     extends GradeSystemException { ... }
+    public class InvalidFileFormatException extends GradeSystemException { ... }
+
+WHY A SHARED ABSTRACT BASE CLASS?
+------------------------------------
+This uses INHERITANCE for polymorphism, not just code reuse. If some
+future code ever needs to catch "any of our custom exceptions" generically,
+it can write "catch (GradeSystemException e)" ONCE instead of listing
+all four types. It also enforces that every custom exception requires
+a message - no accidentally-empty exceptions.
+
+WHY THROW INSTEAD OF RETURN NULL?
+------------------------------------
+Original code: findStudent() returned null if nothing was found. Problem:
+EVERY caller must remember to check for null, and if even one forgets,
+you get a NullPointerException somewhere far downstream from the actual
+mistake (sometimes called "action at a distance" - hard to debug).
+
+Fix: throw StudentNotFoundException instead. Java's compiler now FORCES
+every caller to acknowledge the failure - it's structurally impossible
+to silently ignore.
+
+EXCEPTION TRANSLATION
+------------------------
+FileExporter catches Java's generic, low-level IOException and converts
+it into our own ReportExportException:
+
+    try {
+        Files.writeString(filePath, content, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+        throw new ReportExportException("Could not write report: " + e.getMessage());
+    }
+
+Why bother? IOException could mean ANYTHING file-related (permission
+denied, disk full, bad path). By wrapping it, every catch site in
+ConsoleApp only ever needs to know about OUR vocabulary of failures,
+not Java's entire I/O exception family tree.
+
+THE "CONTINUE ON FAILURE" PATTERN (bulk import)
+---------------------------------------------------
+CSVParser throws immediately if the FILE STRUCTURE is wrong (bad header)
+- because that means the whole file's meaning is unknown, nothing is
+salvageable.
+
+BulkImportService instead SKIPS a bad individual row and keeps going:
+
+    String failureReason = validate(record);
+    if (failureReason != null) {
+        result.recordFailure(record.getRowNumber(), failureReason);
+        continue;  // skip this row, keep processing the rest
+    }
+
+One bad row in an otherwise-good file shouldn't throw away all the
+valid rows already processed. This is standard in real-world batch/ETL
+systems.
+
+
+====================================================================
+3. COLLECTIONS - LIST, ARRAYLIST, MAP, HASHMAP
+====================================================================
+
+ARRAY (Lab 1 style) vs LIST (this project)
+----------------------------------------------
+Lab 1:
+    private Student[] students = new Student[50];
+    private int studentCount = 0;   // you track this yourself
+
+Problems: must decide size (50) up front, must manually track how many
+slots are used, must manually shift things if removing from the middle.
+
+This project:
+    List<Student> result = new ArrayList<>();
+    result.add(student);   // grows automatically, no manual counter
+    result.size();          // built-in count, no separate variable
+
+List is an INTERFACE (a contract: "I promise add/get/size, etc.").
+ArrayList is ONE implementation of that contract (backed by a
+resizable array internally). LinkedList is a DIFFERENT implementation
+of the same contract (backed by a chain of linked nodes).
+
+WHY DECLARE AS "List<Student>" BUT CONSTRUCT AS "new ArrayList<>()"?
+------------------------------------------------------------------------
+    List<Student> students = new ArrayList<>();
+
+Common Java habit: declare using the general interface, construct using
+one specific implementation. If you ever switch to LinkedList later, you
+only change the right-hand side - every place that just says "this is
+a List" doesn't need to change.
+
+WHY ArrayList AND NEVER LinkedList HERE?
+-------------------------------------------
+ArrayList is faster for what we do constantly (looping through
+everything, getting items by position). LinkedList only wins when you
+insert into the middle of a huge list repeatedly, which we never do.
+ArrayList is the conventional default unless you have a specific reason
+not to use it.
+
+MAP / HASHMAP
+---------------
+An array looks things up by NUMBER (array[0], array[1]). A Map looks
+things up by ANY value you choose, called a KEY.
+
+    Map<Double, Integer> counts = new HashMap<>();
+
+This means: keys are Double (grade scores), values are Integer (how many
+times that score appeared). HashMap is the standard fast implementation
+of the Map contract.
+
+MAP.MERGE AND METHOD REFERENCES (used in mode() calculation)
+------------------------------------------------------------------
+    counts.merge(g.getGrade(), 1, Integer::sum);
+
+Plain English: "increase this score's counter by 1 - start at 1 if
+we've never seen this score before."
+  - g.getGrade()  -> the KEY (the score)
+  - 1             -> value to use if key is brand new
+  - Integer::sum  -> if the key already exists, combine OLD value and
+                     NEW value (1) using this function
+
+Integer::sum is a METHOD REFERENCE - shorthand for writing a tiny inline
+function (a, b) -> a + b (called a LAMBDA). Java already has a built-in
+Integer.sum(a, b) method that adds two numbers, so Integer::sum just
+says "use that existing method as my combiner."
+
+This replaces what would otherwise be a manual nested-loop counting
+approach (loop through every grade, then loop through every OTHER grade
+counting matches) - HashMap does the counting in one pass instead.
+
+MAP.ENTRY
+-----------
+When looping over a Map, you get PAIRS (key AND value together), not
+just one or the other.
+
+    for (Map.Entry<Double, Integer> entry : counts.entrySet()) {
+        entry.getKey();    // the score
+        entry.getValue();  // how many times it occurred
+    }
+
+counts.entrySet() converts the whole map into a loop-able collection
+of these key/value pairs.
+
+
+====================================================================
+4. LOOPS - WHAT CHANGED FROM LAB 1
+====================================================================
+
+INDEXED FOR LOOP (Lab 1 style)
+----------------------------------
+    for (int i = 0; i < grades.length; i++) {
+        Grade g = grades[i];
+        // do something with g
+    }
+You manually manage a counter i, compare it, increment it, and use it
+to look up each item by position.
+
+ENHANCED FOR LOOP / "FOR-EACH" (used almost everywhere in this project)
+----------------------------------------------------------------------------
+    for (Grade g : grades) {
+        // do something with g
+    }
+Means: "for every item in grades, call it g one at a time, run this
+block." No index, no manual increment, no comparison - Java handles all
+of that invisibly. Use this whenever you just want to VISIT every item
+and don't need its position number.
+
+We used the INDEXED version only when the index itself mattered - e.g.
+CSVParser needed the actual row number for error messages.
+
+WHILE LOOPS - used for input retry patterns
+-----------------------------------------------
+    while (true) {
+        System.out.print(prompt);
+        String input = scanner.nextLine();
+        try {
+            int value = Integer.parseInt(input.trim());
+            if (value >= min && value <= max) {
+                return value;   // this is what actually ends the loop
+            }
+            System.out.println("Please enter a number between " + min + " and " + max + ".");
+        } catch (NumberFormatException e) {
+            System.out.println("Please enter a valid whole number.");
+        }
+    }
+
+Use while(true) when you DON'T know in advance how many times you'll
+loop - keep going until some condition is met, which might happen on
+attempt 1 or attempt 15. We used this for every input-validation retry
+loop in ConsoleApp. We never needed do-while in this project (it just
+guarantees the loop body runs at least once before checking - all our
+loops already print a prompt before checking anything, so plain
+while(true) covered every case).
+
+CONTINUE KEYWORD
+-------------------
+"Stop processing THIS iteration right now, skip to the next item."
+
+    for (Student s : students) {
+        List<Grade> studentGrades = gradeManager.getGradesByStudent(s.getStudentId());
+        if (studentGrades.isEmpty()) {
+            continue;   // skip students with no grades entirely
+        }
+        total = total + gpaCalculator.calculateCumulativeGpa(studentGrades);
+        count = count + 1;
+    }
+
+Used in classAverageGpa() to skip students with zero grades, so they
+don't drag down the average as if they had a grade of 0.
+
+
+====================================================================
+5. STRINGBUILDER
+====================================================================
+
+Normal Strings in Java are IMMUTABLE - once created, they never change.
+If you did report = report + "more text" a hundred times in a loop,
+Java secretly creates a hundred new String objects, throwing away each
+previous one - wasteful and slow.
+
+StringBuilder is a MUTABLE text container - .append() adds text to the
+SAME object in memory, over and over, no waste:
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("STUDENT GRADE REPORT - SUMMARY\n");
+    sb.append("Student ID: ").append(student.getStudentId()).append("\n");
+    ...
+    return sb.toString();   // convert to a real String only at the end
+
+Rule of thumb: building up a big piece of text piece-by-piece in a loop
+-> use StringBuilder. Used in ReportGenerator for building multi-line
+report text.
+
+
+====================================================================
+6. FILE I/O (FileExporter) - CONCEPTS THAT WERE NEW
+====================================================================
+
+Path       - represents a file/folder LOCATION as an object (not just
+             a plain String). Handles OS differences (\  vs /) safely,
+             and has useful methods like .resolve().
+
+Files      - a toolbox class (like Math or Collections) full of STATIC
+             methods for working with files: create, read, write, get size.
+             You never construct a Files object - just call Files.xxx().
+
+Paths.get("reports")             -> turns text into a real Path object
+Files.createDirectories(path)    -> makes sure a folder exists (does
+                                     nothing if it already does)
+path.resolve("name.txt")         -> "give me a new Path for this file
+                                     INSIDE this folder"
+Files.writeString(path, text, StandardCharsets.UTF_8)
+                                  -> writes text into that file, using
+                                     UTF-8 encoding so special characters
+                                     save correctly
+
+CONSTRUCTOR OVERLOADING
+---------------------------
+FileExporter has TWO constructors:
+
+    public FileExporter() {
+        this(Paths.get("reports"));   // calls the other constructor
+    }
+
+    public FileExporter(Path reportsDirectory) {
+        this.reportsDirectory = reportsDirectory;
+    }
+
+Two constructors, same class name, different parameters = overloading.
+The no-arg version is for real use (defaults to a real "reports" folder).
+The one-arg version exists so TESTS could hand it a temporary folder
+instead of touching your real project files.
+
+THE BUG WE ACTUALLY HIT AND FIXED
+-------------------------------------
+Original design hardcoded the folder name as a constant. First test
+attempt tried faking Java's "current working directory" (user.dir) to
+redirect FileExporter into a temp folder for testing - this DID NOT
+WORK, because java.nio.file caches the real working directory at JVM
+startup and ignores later changes to that setting.
+
+The real fix: inject the target directory via the constructor instead
+of hardcoding it (Dependency Inversion again) - so tests can just hand
+it a temp folder directly, no trickery needed.
+
+
+====================================================================
+7. TESTING - THREE DIFFERENT STRATEGIES, AND WHEN TO USE EACH
+====================================================================
+
+STRATEGY 1: PURE-FUNCTION TESTS (no setup needed)
+------------------------------------------------------
+Used for: GPACalculatorTest, ClassStatisticsCalculatorTest,
+GradeAverageCalculatorTest.
+
+These classes have ZERO dependencies - the test just calls the method
+and checks the result. Cheapest, fastest, most valuable tier of testing.
+
+PARAMETERIZED TESTS (@ParameterizedTest + @CsvSource)
+----------------------------------------------------------
+Instead of writing 10 nearly-identical test methods, express "here are
+10 input/output pairs, run the same check for each" as one compact table:
+
+    @ParameterizedTest(name = "{0}% maps to {1} GPA points")
+    @CsvSource({
+            "100, 4.0",
+            "93,  4.0",
+            "92,  3.7",
+            ...
+    })
+    void toGpaPoints_mapsPercentageCorrectly(double percentage, double expectedPoints) {
+        assertEquals(expectedPoints, gpaCalculator.toGpaPoints(percentage));
+    }
+
+Adding an 11th test case later means adding ONE row, not copy-pasting
+a whole method.
+
+STRATEGY 2: MOCKITO - ISOLATING FROM COLLABORATORS
+------------------------------------------------------
+Used for: StudentReportPrinterTest.
+
+    @ExtendWith(MockitoExtension.class)
+    class StudentReportPrinterTest {
+        @Mock private StudentManager studentManager;
+        @Mock private StudentAverageCalculator calculator;
+        ...
+        when(studentManager.getAllStudents()).thenReturn(List.of());
+
+Mockito creates a FAKE version of a dependency that you fully control -
+"when asked for all students, return exactly this list." This
+guarantees that if the test fails, it can ONLY mean the class under
+test (StudentReportPrinter) has a real bug - not that some unrelated
+real collaborator happened to misbehave.
+
+STRATEGY 3: REAL COLLABORATORS + CAPTURED OUTPUT
+------------------------------------------------------
+Used for: GradeReportPrinterTest, GPAReportPrinterTest,
+ClassStatisticsPrinterTest, FileExporterTest.
+
+    capturedOut = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(capturedOut));
+    ...
+    assertTrue(output.contains("GRADE HISTORY"));
+
+Here we used REAL, cheap collaborator objects instead of mocks, because
+mocking them would mean scripting dozens of when(...) calls just to
+rebuild data that's trivial to construct directly. This is the actual
+judgment skill: Mockito earns its complexity cost when a collaborator
+is complex, slow, hard to control, or you specifically need to verify
+INTERACTIONS. A simple real-object test is more honest when the
+collaborator is already cheap and trustworthy.
+
+
+====================================================================
+8. GIT / GITHUB WORKFLOW - KEY LESSONS
+====================================================================
+
+BRANCHING MODEL
+-------------------
+main (production-ready only)
+  <- develop (integration branch)
+       <- feature/*, bugfix/*, docs/*, test/* (one branch per unit of work)
+
+Every feature gets its own branch off develop, merged back with
+"git merge --no-ff" so develop's history shows a clear marker of
+exactly where each feature landed.
+
+CONVENTIONAL COMMITS
+------------------------
+feat:, fix:, refactor:, test:, docs:, chore: prefixes make the commit
+history self-documenting - "git log --oneline" becomes a readable
+changelog.
+
+CONFIGURATION PRECEDENCE (the "Student Developer" bug)
+------------------------------------------------------------
+git config --global   -> applies to every repo on your machine
+git config --local    -> overrides it for just the CURRENT repo
+Local ALWAYS wins over global.
+
+We spent a long time debugging why commits kept showing the wrong
+author even after fixing global config - turned out a leftover LOCAL
+override in .git/config was silently beating the correct global
+settings. Fixed with:
+    git config --local --unset user.name
+    git config --local --unset user.email
+
+General lesson: whenever a setting doesn't seem to take effect, ask
+"is something more specific overriding this?" This same idea shows up
+everywhere in software (environment variables vs config files, CSS
+specificity, local variables shadowing instance fields).
+
+GIT FILTER-BRANCH
+--------------------
+Rewrites the author/committer identity on EVERY commit across ALL
+branches - used to fix historical commits made under the wrong identity:
+
+    git filter-branch -f --env-filter '
+    export GIT_AUTHOR_NAME="..."
+    export GIT_AUTHOR_EMAIL="..."
+    export GIT_COMMITTER_NAME="..."
+    export GIT_COMMITTER_EMAIL="..."
+    ' -- --all
+
+Creates backup refs (refs/original/*) as a safety net - safe to delete
+once you've confirmed the rewrite worked.
+
+STASH IS NOT A SUBSTITUTE FOR COMMITTING
+---------------------------------------------
+We lost work once because it was only ever "stashed," never committed.
+A stash is a single, easily-forgotten pointer with no branch name
+attached - exactly the kind of thing that falls through the cracks when
+juggling multiple branch switches. Lesson: if work matters, commit it,
+even with an imperfect message you fix later - don't leave it stashed.
+
+git stash apply  (keeps the stash, in case something goes wrong)
+git stash pop    (restores AND deletes immediately - no second chance)
+
+PULL REQUESTS
+-----------------
+A PR needs at least one commit in the branch that ISN'T yet in the base
+branch. If you already merged locally via "git merge" before opening a
+PR, GitHub will say "nothing to compare" - because there's genuinely
+nothing left to show.
+
+Direct compare URL (bypasses stale banners):
+    https://github.com/<user>/<repo>/compare/<base>...<compare>
+
+
+====================================================================
+9. MAVEN / JACOCO - CONFIGURATION LESSONS
+====================================================================
+
+THE argLine BUG
+-------------------
+JaCoCo and Surefire (the test-runner plugin) both wanted to control the
+same "argLine" property. Our pom.xml had a HARDCODED argLine value that
+completely OVERWROTE what JaCoCo had dynamically set up - so JaCoCo's
+coverage agent never actually attached, and no coverage report was ever
+generated, despite "BUILD SUCCESS."
+
+Fix: reference JaCoCo's property explicitly and APPEND to it, instead
+of replacing it:
+
+    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+
+General lesson: when multiple tools need to contribute to the same
+setting, COMPOSE additively rather than assigning destructively.
+
+EXCLUDING NON-BUSINESS-LOGIC FROM COVERAGE
+-----------------------------------------------
+Main and ConsoleApp (console I/O / menu-wiring) were excluded from the
+JaCoCo coverage target, with the reasoning documented in the README:
+testing them meaningfully requires simulating fake System.in input
+rather than testing real logic. This is standard, defensible industry
+practice, NOT gaming the metric - as long as it's documented.
+
+
+====================================================================
+10. QUICK REFERENCE - THE ROUNDING TRICK
+====================================================================
+
+Math.round() only rounds to a WHOLE number - no built-in way to round
+to a specific number of decimal places. The trick:
+
+    Math.round(value * 10) / 10.0     // rounds to 1 decimal place
+    Math.round(value * 100) / 100.0   // rounds to 2 decimal places
+
+Steps for the 1-decimal version:
+  1. value * 10       -> shifts the decimal point one place right
+                          (83.26 becomes 832.6)
+  2. Math.round(...)   -> rounds to a whole number (832.6 -> 833)
+  3. / 10.0            -> shifts the decimal back (833 -> 83.3)
+
+Net effect: 83.26 rounds to 83.3.
+
+
+====================================================================
+END OF LESSONS
+====================================================================

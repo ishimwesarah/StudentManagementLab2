@@ -8,11 +8,11 @@ public class HonorsStudent extends Student {
     public HonorsStudent(String name, int age, String email, String phone) {
         super(name, age, email, phone);
     }
-
+    @Override
     public String getStudentType() {
         return "Honors";
     }
-
+    @Override
     public double getPassingGrade() {
         return passingGrade;
     }
@@ -35,6 +35,7 @@ public class HonorsStudent extends Student {
         return honorsEligible;
     }
 
+    @Override
     public void displayStudentDetails() {
         checkHonorsEligibility();
 

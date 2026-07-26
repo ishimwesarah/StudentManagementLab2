@@ -1,0 +1,326 @@
+====================================================================
+LESSONS LEARNED - TESTING PHASE (JUnit 5 + Mockito)
+====================================================================
+
+This covers everything learned while writing tests for the Student
+Grade Management System. Written with plain-language analogies first,
+then the real code, so you can explain any of this out loud without
+sounding like you're just repeating jargon.
+
+
+====================================================================
+1. WHY WE WRITE TESTS AT ALL
+====================================================================
+
+Running the app manually and clicking through the menu only proves
+something works ONCE, in your head, on your machine, at that moment.
+The next time you change any code, you'd have to click through
+everything by hand again - and you'd probably forget some edge case.
+
+A TEST is a small piece of code that automatically calls your method
+with specific inputs and checks the output is exactly what it should
+be. Once written, it runs in milliseconds, forever, every time.
+
+ANALOGY: a vending machine. Put in a coin, press B4, expect a specific
+snack to come out. A test is: put in the coin, press the button, check
+the RIGHT snack actually came out. If the wrong snack appears,
+something inside the machine is broken.
+
+    assertEquals(85.0, calculator.calculateOverallAverage(grades));
+
+Read this as: "I'm putting in `grades` (the coin). I expect `85.0`
+(the snack) to come out. assertEquals checks if that's what actually
+happened."
+
+
+====================================================================
+2. THE BASIC SHAPE OF A TEST - ARRANGE, ACT, ASSERT
+====================================================================
+
+Every test we wrote follows the same three-step pattern:
+
+    @Test
+    void overallAverage_mixedGrades_computesCorrectMean() {
+        // ARRANGE - set up the data you need
+        List<Grade> grades = List.of(
+                new Grade("STU001", math, 80),
+                new Grade("STU001", art, 90)
+        );
+
+        // ACT + ASSERT combined here - call the method, check the result
+        assertEquals(85.0, calculator.calculateOverallAverage(grades));
+    }
+
+@Test is an ANNOTATION - a label above a method telling JUnit "this
+isn't regular code, it's a test - run it automatically."
+
+WHY TEST NAMES LOOK LIKE SENTENCES
+--------------------------------------
+    void overallAverage_mixedGrades_computesCorrectMean()
+
+Pattern: methodBeingTested_scenario_expectedOutcome. When a test fails,
+you see this name in red immediately - a good name tells you what
+broke without opening the file. A name like "test1()" tells you nothing.
+
+@DisplayName - a SECOND, human-readable label
+------------------------------------------------
+    @Test
+    @DisplayName("core average only includes Core subject grades")
+    void coreAverage_ignoresElectiveGrades() { ... }
+
+Purely cosmetic, but this is what actually shows up in the test runner
+- reads like a plain-English sentence describing the behavior being
+checked, instead of a camelCase method name.
+
+
+====================================================================
+2. THE ASSERTION TOOLKIT
+====================================================================
+
+These are all built-in JUnit methods that check something and fail
+the test (with a clear message) if the check doesn't pass.
+
+    assertEquals(expected, actual)   -> "are these two values THE SAME?"
+    assertTrue(someCondition)         -> "is this condition TRUE?"
+    assertFalse(someCondition)        -> "is this condition FALSE?"
+
+ASSERTTHROWS - proving an exception actually happens
+----------------------------------------------------------
+    assertThrows(StudentNotFoundException.class,
+                 () -> studentManager.findStudent("STU999"));
+
+ANALOGY: deliberately lighting a small fire on purpose to check the
+smoke alarm actually works. You're saying: "do this risky thing (look
+up an ID that doesn't exist) and I FULLY EXPECT an alarm
+(StudentNotFoundException) to go off. If no alarm goes off, THAT is
+the failure - the alarm itself is broken."
+
+The "() -> ..." part is called a LAMBDA - a tiny, unnamed mini-function
+you're handing to assertThrows so it can run that risky code itself
+and watch for the exception.
+
+
+====================================================================
+3. @BeforeEach and @AfterEach - RESETTING THE STAGE
+====================================================================
+
+    @BeforeEach
+    void setUp() {
+        calculator = new GradeAverageCalculator();
+        math = new CoreSubject("Mathematics", "MATH101");
+    }
+
+ANALOGY: a stage crew resetting every prop to its exact starting
+position before every single scene (test). Without this, you'd have
+to copy-paste the same setup code into every test method by hand.
+
+@BeforeEach runs FRESH before EVERY @Test method in the class. This
+guarantees TEST ISOLATION - one test can never accidentally leave
+behind leftover state that messes up a different test.
+
+@AfterEach is the mirror image - cleanup code that runs AFTER every
+test:
+
+    @AfterEach
+    void tearDown() throws IOException {
+        deleteRecursively(tempDir);   // delete the temp test folder
+    }
+
+
+====================================================================
+4. @ParameterizedTest + @CsvSource - A CHECKLIST WITH MANY ROWS
+====================================================================
+
+    @ParameterizedTest(name = "a grade of {0} maps to letter {1}")
+    @CsvSource({
+            "100, A",
+            "90,  A",
+            "89,  B",
+            "80,  B",
+            ...
+    })
+    void getLetterGrade_mapsScoreToCorrectLetter(double score, String expectedLetter) {
+        Grade grade = new Grade("STU001", math, score);
+        assertEquals(expectedLetter, grade.getLetterGrade());
+    }
+
+ANALOGY: a teacher's answer key. Input -> expected answer, input ->
+expected answer, over and over, using the EXACT SAME grading process
+each time. Instead of writing 10 nearly-identical test methods (easy to
+introduce a copy-paste typo between them), @CsvSource gives JUnit one
+small table - each row becomes its own independent test run. If row 4
+fails but the rest pass, you see exactly which specific input broke.
+
+
+====================================================================
+5. CAPTURING CONSOLE OUTPUT - System.out, PrintStream, ByteArrayOutputStream
+====================================================================
+
+THE PROBLEM THIS SOLVES
+----------------------------
+Methods like printAllStudents() don't RETURN anything useful to check -
+they just call System.out.println(...) a bunch of times. So how do you
+test "did it print the right thing"?
+
+THE CALL-CENTER ANALOGY
+----------------------------
+Normally, every call gets broadcast LIVE over the office speakers so
+everyone can hear it (System.out -> your screen). Today, instead, you
+want to RECORD one call so you can review exactly what was said
+afterward, without anyone hearing it live.
+
+  ByteArrayOutputStream  = the RECORDING DEVICE. An empty cassette tape,
+                           ready to capture whatever gets said into it.
+                           On its own it knows nothing about "text" -
+                           it just accepts raw bytes and holds them.
+
+  PrintStream            = the MICROPHONE. A microphone doesn't decide
+                           where sound goes - it's just the interface
+                           that accepts spoken words (println calls).
+                           You can plug it into speakers, or into a
+                           recorder instead.
+
+  System.setOut(...)     = UNPLUGGING the microphone from the speakers
+                           and PLUGGING it into the recorder instead.
+
+    private final PrintStream originalOut = System.out;   // note down the original speaker cable
+    ...
+    capturedOut = new ByteArrayOutputStream();              // the empty tape
+    System.setOut(new PrintStream(capturedOut));            // plug mic into tape, not speakers
+
+Now when the real code runs:
+
+    printer.printAllStudents();   // "speaks" - but into the recorder now
+
+Nobody watching the actual screen sees anything - it's all captured
+silently instead.
+
+    String output = capturedOut.toString();
+
+This is PLAYING BACK the tape and turning it into readable text.
+
+    assertTrue(output.contains("No students registered yet."));
+
+This is: "after listening to the playback, did it actually contain the
+phrase I expected to hear?"
+
+WHY originalOut MATTERS - PLUGGING THE MIC BACK IN
+--------------------------------------------------------
+    System.setOut(originalOut);   // plug the mic back into the real speakers
+
+If this step is skipped, every test that runs AFTER this one would
+also keep talking into the recorder instead of the speakers - meaning
+later tests that need to check real output would silently see nothing,
+which is confusing to debug since the actual code wouldn't be broken -
+just permanently rerouted.
+
+ONE-SENTENCE SUMMARY
+-------------------------
+We temporarily reroute where "printed text" goes - from the visible
+screen into an invisible container we control - so we can grab
+whatever got printed and check it's correct, then plug things back to
+normal afterward.
+
+
+====================================================================
+6. MOCKITO - THE STUNT DOUBLE ANALOGY
+====================================================================
+
+THE ANALOGY
+---------------
+Filming a movie scene where an actor needs to jump off a building. You
+don't use the REAL actor for the dangerous part - you use a STUNT
+DOUBLE who looks similar but does exactly what the director tells them
+to do, nothing more, nothing improvised.
+
+A MOCK is exactly that - a fake version of a real class that does
+NOTHING by itself until you specifically script its behavior.
+
+    @ExtendWith(MockitoExtension.class)
+    class StudentReportPrinterTest {
+
+        @Mock
+        private StudentManager studentManager;
+
+        @Mock
+        private StudentAverageCalculator calculator;
+
+@ExtendWith(MockitoExtension.class) tells JUnit "let Mockito hook into
+this test class." @Mock tells Mockito "create a fake, empty-shell
+version of this class."
+
+SCRIPTING THE STUNT DOUBLE - when(...).thenReturn(...)
+------------------------------------------------------------
+    when(studentManager.getAllStudents()).thenReturn(List.of());
+
+This is you, the director, telling the stunt double exactly what to
+do: "when someone asks you for all the students, just say there are
+none." Without this line, the fake object wouldn't know what to
+respond with at all.
+
+WHY BOTHER WITH A STUNT DOUBLE?
+------------------------------------
+Because now, if the test fails, there's only ONE possible explanation:
+StudentReportPrinter's OWN code is broken. It cannot be StudentManager's
+fault, because StudentManager wasn't really there - it was a stunt
+double doing exactly what it was told. This removes all ambiguity
+about WHERE the bug is.
+
+VERIFY - CHECKING THE STUNT DOUBLE WAS ACTUALLY USED
+-----------------------------------------------------------
+    verify(calculator).calculateClassAverage(List.of(aline));
+
+This is different from checking a RETURN VALUE. It's like checking
+security camera footage afterward to confirm: "did the stunt double
+actually get called onto set at all?" verify checks that a specific
+method was CALLED, with specific arguments - an INTERACTION, not a
+result. In plain terms: "prove StudentReportPrinter actually asked the
+calculator to do the math, instead of secretly doing the math itself."
+
+
+====================================================================
+7. WHY WE DIDN'T ALWAYS USE MOCKITO - A REAL JUDGMENT CALL
+====================================================================
+
+For GradeReportPrinterTest, GPAReportPrinterTest,
+ClassStatisticsPrinterTest, and BulkImportServiceTest, we used REAL
+StudentManager/GradeManager objects instead of mocks - on purpose.
+
+THE RULE
+------------
+Bring in a stunt double (mock) when the real actor is dangerous, slow,
+unreliable, or you specifically need to SPY on whether it got called.
+Use the REAL cast when the real thing is safe, cheap, already trusted,
+and you want to prove the whole scene works TOGETHER.
+
+WHY BulkImportServiceTest SPECIFICALLY USED REAL OBJECTS
+----------------------------------------------------------------
+BulkImportService's whole job is proving grades from a CSV actually
+flow all the way through to REAL storage:
+
+    BulkImportResult result = importService.importFromFile(file);
+    assertEquals(1, result.getSuccessCount());
+    assertEquals(1, gradeManager.getGradeCount());   // asking the REAL
+                                                       // GradeManager how
+                                                       // many grades it
+                                                       // truly has stored
+
+A mock GradeManager could only tell you "yes, addGrade() was CALLED" -
+it can't tell you the grade genuinely landed in a real, working
+collection. This test is what the Lab 2 brief calls an INTEGRATION
+TEST - its entire purpose is to check that several already-tested
+pieces (CSVParser, StudentManager, GradeManager) work correctly
+TOGETHER as a team. Mocking everything would defeat that purpose
+entirely - you'd never prove the full pipeline (parse -> validate ->
+store) actually works end to end.
+
+ONE-SENTENCE SUMMARY
+-------------------------
+Use a stunt double when you want to isolate ONE actor and not depend
+on the others. Use the real cast when you specifically want to prove
+the whole scene works together.
+
+
+====================================================================
+END OF TESTING LESSONS
+====================================================================

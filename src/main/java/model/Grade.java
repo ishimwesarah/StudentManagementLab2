@@ -1,9 +1,13 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-public class Grade {
+
+public class Grade implements Serializable {
+    private static final long serialVersionUID = 1L;
+
 
     private static int gradeCounter = 0;
 

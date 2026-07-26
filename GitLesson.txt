@@ -1,0 +1,39 @@
+git init                                  start tracking a folder
+git status                                what's changed right now
+git log --oneline                         short commit history
+git log --oneline --graph --all           visual history, every branch
+git diff                                  show exact line changes, uncommitted
+
+git add <file>                            stage a change
+git commit -m "message"                   save a snapshot
+git push                                  upload commits
+git push -u origin <branch>               upload + link a new branch
+git push --force                          overwrite the remote branch
+git pull                                  download + merge remote changes
+
+git branch                                list local branches
+git checkout -b <name>                    create + switch to new branch
+git branch -d <name>                      delete a merged branch (safe)
+git branch -D <name>                      force-delete a branch
+
+git merge <branch>                        combine another branch in
+git merge --no-ff <branch>                combine, always keep a merge commit
+git merge --abort                         cancel a conflicted merge
+
+git reset --hard <target>                 force your branch to match target exactly
+git reset --soft <target>                 rewind commits, keep changes staged
+
+git stash                                 shelve uncommitted changes
+git stash apply                           restore a stash, keep it saved
+git stash pop                             restore a stash, delete it
+git stash clear                           delete all stashes
+
+git tag -a v1.0.0 -m "message"            bookmark this exact commit
+
+git config --global user.name "..."       set identity for every repo
+git config --local user.name "..."        override identity for this repo only
+
+git rebase <branch>                       replay your commits onto <branch>
+git rebase -i HEAD~3                      edit/combine your last 3 commits
+git rebase --continue                     resume after fixing a conflict
+git rebase --abort                        cancel the rebase entirely
