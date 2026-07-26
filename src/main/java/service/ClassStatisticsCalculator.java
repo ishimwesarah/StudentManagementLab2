@@ -120,7 +120,7 @@ public class ClassStatisticsCalculator {
                 max = g.getGrade();
             }
         }
-        return grades.isEmpty() ? 0.0 : max;
+        return grades.isEmpty() ? 0.0 : max;  //tenary operator
     }
 
     /**

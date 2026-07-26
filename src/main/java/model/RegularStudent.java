@@ -12,15 +12,15 @@ public class RegularStudent extends Student {
         // class, which does the shared setup work (like the ID).
         super(name, age, email, phone);
     }
-
+    @Override
     public String getStudentType() {
         return "Regular";
     }
-
+    @Override
     public double getPassingGrade() {
         return passingGrade;
     }
-
+    @Override
     public void displayStudentDetails() {
         System.out.println("Student ID: " + getStudentId());
         System.out.println("Name: " + getName());
