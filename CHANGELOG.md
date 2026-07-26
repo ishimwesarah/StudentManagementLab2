@@ -180,3 +180,28 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   being saved as a downloadable artifact, since that wasn't being used.
 - CI now does exactly one thing: check out the code, set up JDK 17,
   and run the full test suite on every push/PR to `main` or `develop`.
+
+## Lab 3 - Advanced Features
+
+### Exportable Interface (feature/exporter-interface)
+- Added `Exportable` interface in `model/` (alongside `Gradable`) — the
+  first of the three interfaces (`Searchable`, `Exportable`, `Calculable`)
+  originally requested back in Lab 2 and deliberately deferred at the
+  time, since each concern only had one implementer then. `Exportable`
+  now has three genuine implementers, which is exactly the situation
+  where an interface earns its keep.
+- `CsvGradeExporter` — writes grades in the same column format
+  `CSVParser` expects on import, so exported data can be re-imported
+  without a format mismatch.
+- `JsonGradeExporter` — hand-built JSON (no new dependency), with proper
+  string escaping and no trailing-comma bug.
+- `BinaryGradeExporter` — uses Java's built-in object serialization
+  (`ObjectOutputStream`/`ObjectInputStream`). Made `Grade` and `Subject`
+  implement `Serializable`, with an explicit `serialVersionUID` on each.
+- Wired into `ConsoleApp` as new menu option **10. Multi-Format Export**,
+  looping over a `List<Exportable>` with zero per-format branching logic
+  — adding a fourth format later requires no changes to this method.
+- Unit tests: `CsvGradeExporterTest`, `JsonGradeExporterTest`, and
+  `BinaryGradeExporterTest` (the last including a full serialize/
+  deserialize round-trip test, proving real objects survive the export
+  and can be read back intact).
