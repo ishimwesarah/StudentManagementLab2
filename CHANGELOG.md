@@ -256,3 +256,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   `Calculable<Grade>` implementers (`GradeAverageCalculator` vs
   `GPACalculator`) genuinely diverge on the same input data.
 
+### HashMap-Backed Student Lookup (feature/hashmap-lookup)
+- `StudentManager` now maintains a `HashMap<String, Student>` alongside
+  its existing array, keyed by lowercase student ID.
+- `findStudent()` changed from an O(n) linear scan through the array to
+  an O(1) average-case HashMap lookup.
+- The array remains the source of truth for `getAllStudents()` and
+  `getAllStudentIds()` - HashMap does not guarantee iteration order, and
+  registration order is what callers of those methods expect.
+- Unit test added confirming lookup time stays roughly flat as the
+  roster grows, rather than scaling linearly - a directional sanity
+  check, not a strict benchmark, given natural JVM timing noise.
+
