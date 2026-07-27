@@ -11,13 +11,22 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
- * Proves that GradeAverageCalculator and StudentAverageCalculator - two
- * calculators built for completely unrelated data types - can both be
- * used through the exact same generic Calculable<T> interface. This is
- * the actual point of making Calculable generic rather than writing two
- * separate, near-identical interfaces.
+ * Proves that Calculable<T> genuinely earns its keep as a generic
+ * interface, in two different ways:
+ *
+ * 1. The SAME method call (calculate()) works correctly across two
+ *    completely unrelated data types (Grade vs Student), with the
+ *    compiler enforcing type safety at every call site - no casting,
+ *    no Object, no risk of mixing up which list belongs to which
+ *    calculator.
+ *
+ * 2. TWO DIFFERENT classes can implement Calculable<Grade> with the
+ *    same T, yet produce genuinely different results - proving the
+ *    interface describes a shared SHAPE of operation, not a single
+ *    hardcoded calculation.
  */
 @DisplayName("Calculable<T> - generic interface used across unrelated types")
 class CalculableTest {
@@ -48,5 +57,35 @@ class CalculableTest {
 
         assertEquals(85.0, gradeResult);
         assertEquals(80.0, studentResult);
+    }
+
+    @Test
+    @DisplayName("two different Calculable<Grade> implementers produce genuinely different results from the same data")
+    void twoImplementersOfSameT_produceDifferentResults() {
+        CoreSubject math = new CoreSubject("Mathematics", "MATH101");
+        List<Grade> grades = List.of(
+                new Grade("STU001", math, 95),
+                new Grade("STU001", math, 65)
+        );
+
+        // Both of these are Calculable<Grade> - identical T - but they
+        // represent completely different calculations underneath.
+        Calculable<Grade> percentageAverage = new GradeAverageCalculator();
+        Calculable<Grade> gpaAverage = new GPACalculator();
+
+        double percentageResult = percentageAverage.calculate(grades);
+        double gpaResult = gpaAverage.calculate(grades);
+
+        // (95 + 65) / 2 = 80.0 as a plain percentage average
+        assertEquals(80.0, percentageResult);
+
+        // 95 -> 4.0 GPA points, 65 -> 1.0 GPA points, average = 2.5
+        assertEquals(2.5, gpaResult);
+
+        // The real point: same interface, same T, same input data,
+        // but calculate() means something different depending on WHICH
+        // implementer you're holding - proving the interface describes
+        // a shared shape, not a single fixed formula.
+        assertNotEquals(percentageResult, gpaResult);
     }
 }
