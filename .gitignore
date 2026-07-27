@@ -23,6 +23,8 @@ reports/*.txt
 imports/*.csv
 !reports/.gitkeep
 !imports/.gitkeep
+exports
+GitLesson.txt
 
 import_log_*.txt
 
