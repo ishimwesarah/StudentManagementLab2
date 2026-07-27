@@ -228,3 +228,31 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
   test proving both implementations are genuinely interchangeable
   through the shared `Searchable` type - the actual point of the
   interface, not just asserted but verified.
+### Calculable Interface (feature/calculable-interface)
+- Added `Calculable<T>` in `model/` — the third and last of the three
+  interfaces (`Searchable`, `Exportable`, `Calculable`) originally
+  requested back in Lab 2. Unlike the other two, this one is generic:
+  `<T>` is a placeholder type filled in by whoever implements it, since
+  the project's calculators don't share an identical method shape (they
+  operate on different data types - `Grade` vs `Student`).
+- `GradeAverageCalculator` implements `Calculable<Grade>`, delegating to
+  its existing `calculateOverallAverage()`.
+- `StudentAverageCalculator` implements `Calculable<Student>` -
+  genuine proof the generic design works across two unrelated types with
+  full compile-time type safety, no casting, no `Object`.
+- `GPACalculator` also implements `Calculable<Grade>` - a second,
+  different implementer with the same `T` as `GradeAverageCalculator`,
+  demonstrating the interface describes a shared *shape* of operation,
+  not one fixed formula.
+- `ClassStatisticsCalculator` deliberately does NOT implement
+  `Calculable` - it exposes several different summary statistics
+  (mean, median, mode, standard deviation), and picking just one to
+  satisfy a single `calculate()` method would be arbitrary and
+  misleading, the same "don't force a fit" discipline applied when
+  scoping `Searchable`.
+- Unit tests: `CalculableTest` with two cases — one proving
+  `Calculable<Grade>` and `Calculable<Student>` both work correctly
+  through the same interface call, and one proving two different
+  `Calculable<Grade>` implementers (`GradeAverageCalculator` vs
+  `GPACalculator`) genuinely diverge on the same input data.
+
