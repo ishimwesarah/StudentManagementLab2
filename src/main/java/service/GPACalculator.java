@@ -1,5 +1,6 @@
 package service;
 
+import model.Calculable;
 import model.Grade;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
  * Single responsibility: GPA conversion math only. No storage, no printing -
  * that's GPAReportPrinter's job.
  */
-public class GPACalculator {
+public class GPACalculator implements Calculable<Grade> {
 
     /**
      * Converts a percentage score to GPA points on the standard 4.0 scale.
@@ -52,6 +53,18 @@ public class GPACalculator {
         if (percentage >= 67) return "D+";
         if (percentage >= 60) return "D";
         return "F";
+    }
+
+    /**
+     * Satisfies the Calculable contract by delegating to cumulative GPA -
+     * the most natural single-number summary of a list of grades on this
+     * class's own scale. Note this is a SECOND, different implementer of
+     * Calculable<Grade> alongside GradeAverageCalculator - same T (Grade),
+     * genuinely different calculation underneath.
+     */
+    @Override
+    public double calculate(List<Grade> grades) {
+        return calculateCumulativeGpa(grades);
     }
 
     /**

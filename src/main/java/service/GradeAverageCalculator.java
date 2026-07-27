@@ -1,11 +1,32 @@
 package service;
 
+import model.Calculable;
 import model.Grade;
 
 import java.util.List;
 
+/**
+ * Computes averages over a list of grades.
+ *
+ * Single responsibility: numeric calculation only. This class has no idea
+ * where the grades came from or which student they belong to - it just
+ * takes a List<Grade> and does math. That makes it trivial to unit test
+ * and reusable for any future feature that needs a subject-type average
+ * (e.g. class-wide statistics in a later phase).
+ *
+ * Extracted from the old GradeManager, which used to mix storage,
+ * calculation, and console printing all in one class.
+ */
+public class GradeAverageCalculator implements Calculable<Grade> {
 
-public class GradeAverageCalculator {
+    /**
+     * Satisfies the Calculable contract by delegating to the overall
+     * average - the most natural single-number summary of a list of grades.
+     */
+    @Override
+    public double calculate(List<Grade> grades) {
+        return calculateOverallAverage(grades);
+    }
 
     /**
      * @param value the value to round
