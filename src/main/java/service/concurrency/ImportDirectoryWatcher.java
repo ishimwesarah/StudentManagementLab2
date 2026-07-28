@@ -12,6 +12,7 @@ public class ImportDirectoryWatcher {
     private final Consumer<Path> onNewCsvFile;
     private final ExecutorService watcherExecutor;
     private volatile boolean running;
+    private WatchService watchService;
 
     public ImportDirectoryWatcher(Path watchedDirectory, Consumer<Path> onNewCsvFile) {
         this.watchedDirectory = watchedDirectory;
@@ -19,8 +20,18 @@ public class ImportDirectoryWatcher {
         this.watcherExecutor = Executors.newSingleThreadExecutor();
     }
 
+    /**
+     * Registers the watch synchronously, on the calling thread, before
+     * returning - this matters. If registration happened on the
+     * background thread instead (e.g. inside submit()), a file created
+     * immediately after start() returns could race ahead of the actual
+     * registration, and the OS would never report that creation event.
+     */
     public void start() throws IOException {
         Files.createDirectories(watchedDirectory);
+        watchService = FileSystems.getDefault().newWatchService();
+        watchedDirectory.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+
         running = true;
         watcherExecutor.submit(this::watchLoop);
     }
@@ -28,12 +39,17 @@ public class ImportDirectoryWatcher {
     public void stop() {
         running = false;
         watcherExecutor.shutdownNow();
+        try {
+            if (watchService != null) {
+                watchService.close();
+            }
+        } catch (IOException ignored) {
+            // already shutting down, nothing meaningful to do with this
+        }
     }
 
     private void watchLoop() {
-        try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
-            watchedDirectory.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
-
+        try {
             while (running) {
                 WatchKey key = watchService.take();
 
@@ -48,10 +64,8 @@ public class ImportDirectoryWatcher {
 
                 key.reset();
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | ClosedWatchServiceException e) {
             Thread.currentThread().interrupt();
-        } catch (IOException e) {
-            System.out.println("(Directory watcher failed: " + e.getMessage() + ")");
         }
     }
 }
