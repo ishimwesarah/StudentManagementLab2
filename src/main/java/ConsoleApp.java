@@ -5,6 +5,8 @@ import model.*;
 import service.*;
 import service.concurrency.BatchExportResult;
 import service.concurrency.ConcurrentBatchExporter;
+import service.concurrency.GpaCache;
+import service.concurrency.GpaRecalculationScheduler;
 import service.exporting.BinaryGradeExporter;
 import service.exporting.CsvGradeExporter;
 import service.exporting.JsonGradeExporter;
@@ -47,6 +49,10 @@ public class ConsoleApp {
     private final List<Exportable> gradeDataExporters;
     private final InputValidator inputValidator;
     private final ConcurrentBatchExporter concurrentBatchExporter;
+    private final GpaCache gpaCache;
+    private final GpaRecalculationScheduler gpaRecalculationScheduler;
+
+    private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -88,6 +94,9 @@ public class ConsoleApp {
 
         this.concurrentBatchExporter = new ConcurrentBatchExporter(gradeManager, gradeDataExporters);
 
+        this.gpaCache = new GpaCache();
+        this.gpaRecalculationScheduler = new GpaRecalculationScheduler(studentManager, gradeManager, gpaCalculator, gpaCache);
+
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
         this.science = new CoreSubject("Science", "SCI101");
@@ -103,6 +112,7 @@ public class ConsoleApp {
 
     public void run() {
         loadSampleData();
+        gpaRecalculationScheduler.start(GPA_RECALCULATION_INTERVAL_SECONDS);
 
         boolean running = true;
         while (running) {
@@ -144,13 +154,17 @@ public class ConsoleApp {
                     runConcurrentBatchExport();
                     break;
                 case 12:
+                    printScheduledTaskStatus();
+                    break;
+                case 13:
+                    gpaRecalculationScheduler.stop();
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 12.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 13.");
                     break;
             }
 
@@ -178,8 +192,25 @@ public class ConsoleApp {
         System.out.println("9. Bulk Import Grades");
         System.out.println("10. Multi-Format Export");
         System.out.println("11. Concurrent Batch Reports");
-        System.out.println("12. Exit");
+        System.out.println("12. View Scheduled Task Status");
+        System.out.println("13. Exit");
         System.out.print("Enter choice: ");
+    }
+
+    private void printScheduledTaskStatus() {
+        System.out.println();
+        System.out.println("SCHEDULED TASKS");
+        System.out.println("---------------------------------------------");
+        System.out.println("Daily GPA Recalculation");
+        System.out.println("Interval: every " + GPA_RECALCULATION_INTERVAL_SECONDS + " seconds");
+        System.out.println("Status: Scheduled");
+
+        if (gpaCache.getLastUpdated() != null) {
+            System.out.println("Last run: " + gpaCache.getLastUpdated());
+            System.out.println("Cached GPAs: " + gpaCache.size() + " students");
+        } else {
+            System.out.println("Last run: not yet completed");
+        }
     }
 
     private void addStudent() {
