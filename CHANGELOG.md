@@ -443,3 +443,26 @@ This completes all four executor types required by the Lab 3 brief:
 `CachedThreadPool` (real-time dashboard). The concurrency phase is
 now fully complete.
 
+### LRU Cache Eviction (feature/lru-cache-eviction)
+- `GpaCache` is now bounded by a configurable `maxSize` (default 100),
+  using `LinkedHashMap` in access-order mode (`new LinkedHashMap<>(16,
+  0.75f, true)`) with an overridden `removeEldestEntry()` - once the
+  cache exceeds its size limit, the least recently *accessed* entry is
+  automatically evicted, not just the oldest by insertion.
+- Deliberately switched from `ConcurrentHashMap` to a `synchronized`-
+  wrapped `LinkedHashMap` for this class - `ConcurrentHashMap` has no
+  equivalent hook for atomic, size-aware eviction, so the lock-free
+  concurrent reads it offered had to be traded for the ability to
+  evict correctly. `StudentManager`/`GradeManager`'s use of
+  `synchronized` for the same underlying reason made this a familiar
+  tradeoff rather than a new one.
+- Unit tests: `GpaCacheTest`, including a dedicated test proving
+  eviction is genuinely access-order-based - reading an older entry
+  before adding a new one correctly protects it from eviction, which
+  would fail under a naive insertion-order (FIFO) implementation.
+
+This addresses the Lab 3 brief's "Data Caching System - Thread-safe
+caching with eviction policy" requirement (US-8), completing the part
+of that requirement not yet covered by GpaCache's original
+ConcurrentHashMap-based design.
+
