@@ -17,6 +17,7 @@ import service.exporting.JsonGradeExporter;
 import service.importing.BulkImportResult;
 import service.importing.BulkImportService;
 import service.importing.CSVParser;
+import service.importing.FailureTriageService;
 import service.importing.ImportFailure;
 import service.validation.InputValidator;
 
@@ -60,6 +61,7 @@ public class ConsoleApp {
     private final RealTimeDashboardService dashboardService;
     private final ImportDirectoryWatcher importDirectoryWatcher;
     private final ConcurrentLinkedQueue<Path> pendingAutoImports;
+    private final FailureTriageService failureTriageService;
 
     private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
     private static final long DASHBOARD_REFRESH_INTERVAL_SECONDS = 5;
@@ -125,6 +127,8 @@ public class ConsoleApp {
                 new CSVParser(), studentManager, gradeManager,
                 List.of(math, english, science, music, art, pe)
         );
+
+        this.failureTriageService = new FailureTriageService();
     }
 
     public void run() {
@@ -180,6 +184,9 @@ public class ConsoleApp {
                     printRealTimeDashboard();
                     break;
                 case 14:
+                    printRecentAuditEvents();
+                    break;
+                case 15:
                     gpaRecalculationScheduler.stop();
                     dashboardService.stopAutoRefresh();
                     importDirectoryWatcher.stop();
@@ -190,7 +197,7 @@ public class ConsoleApp {
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 14.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 15.");
                     break;
             }
 
@@ -210,12 +217,6 @@ public class ConsoleApp {
         }
     }
 
-    /**
-     * Checked once per menu loop iteration (not from the watcher's own
-     * background thread) - this keeps all console output happening on
-     * a single thread, avoiding any risk of the watcher thread printing
-     * to the console at the same moment the main thread is mid-prompt.
-     */
     private void checkForAutoDetectedImports() {
         Path detectedFile;
         while ((detectedFile = pendingAutoImports.poll()) != null) {
@@ -264,7 +265,8 @@ public class ConsoleApp {
         System.out.println("11. Concurrent Batch Reports");
         System.out.println("12. View Scheduled Task Status");
         System.out.println("13. Real-Time Statistics Dashboard");
-        System.out.println("14. Exit");
+        System.out.println("14. View Recent Audit Events");
+        System.out.println("15. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -307,6 +309,22 @@ public class ConsoleApp {
         int[] distribution = snapshot.getGradeDistribution();
         for (int i = 0; i < 5; i++) {
             System.out.println("  " + labels[i] + ": " + distribution[i] + " grades");
+        }
+    }
+
+    private void printRecentAuditEvents() {
+        System.out.println();
+        System.out.println("RECENT AUDIT EVENTS (most recent first)");
+        System.out.println("---------------------------------------------");
+
+        List<String> recentEvents = auditLogger.getRecentEvents();
+        if (recentEvents.isEmpty()) {
+            System.out.println("No events recorded yet.");
+            return;
+        }
+
+        for (String event : recentEvents) {
+            System.out.println(event);
         }
     }
 
@@ -656,8 +674,9 @@ public class ConsoleApp {
 
         if (result.getFailureCount() > 0) {
             System.out.println();
-            System.out.println("Failed Records:");
-            for (ImportFailure failure : result.getFailures()) {
+            System.out.println("Failed Records (most severe first):");
+            List<ImportFailure> triaged = failureTriageService.orderBySeverity(result.getFailures());
+            for (ImportFailure failure : triaged) {
                 System.out.println("  Row " + failure.getRowNumber() + ": " + failure.getReason());
             }
         }

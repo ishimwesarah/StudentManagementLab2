@@ -515,3 +515,26 @@ ConcurrentHashMap-based design.
 
 This addresses the Lab 3 brief's "WatchService directory monitoring"
 requirement under NIO.2 Requirements.
+
+### PriorityQueue Triage & LinkedList/Deque Recent Events (feature/priority-queue-and-linked-list)
+- Added `ImportFailure.getSeverity()` - a rough ranking (unknown
+  student ID > unknown subject > type mismatch > out-of-range grade)
+  used to prioritize which import failures deserve review first.
+- Added `FailureTriageService`, using `PriorityQueue` with a reversed
+  `Comparator` to order failures worst-first. Wired into
+  `printImportSummary()` - bulk import failure output is now sorted by
+  severity rather than file order.
+- `AuditLogger` now maintains a rolling buffer of the 10 most recent
+  events using a `LinkedList` accessed as a `Deque` -
+  `addFirst()`/`removeLast()` are both O(1) on a `LinkedList` (direct
+  pointers to both ends, no shifting), a genuine fit for the "keep the
+  last N, drop the oldest" pattern. Exposed via new menu option
+  **14. View Recent Audit Events** (Exit shifted from 14 to 15).
+- Unit tests: `FailureTriageServiceTest` (full severity ordering) and
+  `AuditLoggerRecentEventsTest` (proves both the most-recent-first
+  ordering and that exactly the correct 10 events survive eviction,
+  not just that the count caps at 10).
+
+This addresses the remaining Lab 3 Architecture Requirements for
+`PriorityQueue` and `LinkedList`, with genuine use cases rather than
+type substitutions for their own sake.
