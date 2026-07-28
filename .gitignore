@@ -25,6 +25,7 @@ imports/*.csv
 !imports/.gitkeep
 exports
 GitLesson.txt
+logs
 
 import_log_*.txt
 
