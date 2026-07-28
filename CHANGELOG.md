@@ -336,3 +336,22 @@ course tracking) are all in place.
 - No behavior change - every menu option verified manually end-to-end,
   and the full automated test suite still passes.
 
+### Concurrent Batch Export (feature/concurrent-batch-export)
+- Added `service.concurrency` subpackage: `ConcurrentBatchExporter`,
+  `StudentExportOutcome`, `BatchExportResult`.
+- Uses a `FixedThreadPool` (`Executors.newFixedThreadPool`, sized 2-8 per
+  user selection) to export multiple students' grades concurrently -
+  each task only reads one student's own grades and writes to that
+  student's own files, so there is no shared mutable state between
+  threads and no risk of a race condition in this feature.
+- `Future<StudentExportOutcome>` is used to collect each task's result
+  once complete; `executor.shutdown()` + `awaitTermination()` cleans up
+  the pool's worker threads once all tasks finish.
+- Wired into `ConsoleApp` as new menu option **11. Concurrent Batch
+  Reports** (Exit shifted from 11 to 12), reporting total duration and
+  success/failure counts.
+- Unit tests: `ConcurrentBatchExporterTest`, including a dedicated test
+  proving work genuinely executed across multiple distinct threads
+  (using `ConcurrentHashMap.newKeySet()` to safely record thread names
+  from concurrent callers), not just sequentially with extra ceremony.
+

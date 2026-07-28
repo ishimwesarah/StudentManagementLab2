@@ -3,6 +3,8 @@ import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
 import service.*;
+import service.concurrency.BatchExportResult;
+import service.concurrency.ConcurrentBatchExporter;
 import service.exporting.BinaryGradeExporter;
 import service.exporting.CsvGradeExporter;
 import service.exporting.JsonGradeExporter;
@@ -44,6 +46,7 @@ public class ConsoleApp {
     private final BulkImportService bulkImportService;
     private final List<Exportable> gradeDataExporters;
     private final InputValidator inputValidator;
+    private final ConcurrentBatchExporter concurrentBatchExporter;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -82,6 +85,8 @@ public class ConsoleApp {
         );
 
         this.inputValidator = new InputValidator();
+
+        this.concurrentBatchExporter = new ConcurrentBatchExporter(gradeManager, gradeDataExporters);
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -136,13 +141,16 @@ public class ConsoleApp {
                     exportMultiFormat();
                     break;
                 case 11:
+                    runConcurrentBatchExport();
+                    break;
+                case 12:
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 11.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 12.");
                     break;
             }
 
@@ -169,7 +177,8 @@ public class ConsoleApp {
         System.out.println("8. Export Grade Report");
         System.out.println("9. Bulk Import Grades");
         System.out.println("10. Multi-Format Export");
-        System.out.println("11. Exit");
+        System.out.println("11. Concurrent Batch Reports");
+        System.out.println("12. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -576,6 +585,46 @@ public class ConsoleApp {
             } catch (ReportExportException e) {
                 System.out.println(exporter.getFormatName() + " Export failed: " + e.getMessage());
             }
+        }
+    }
+
+    private void runConcurrentBatchExport() {
+        System.out.println();
+        System.out.println("CONCURRENT BATCH REPORTS");
+        System.out.println("---------------------------------------------");
+
+        List<Student> students = studentManager.getAllStudents();
+        if (students.isEmpty()) {
+            System.out.println("No students registered - nothing to export.");
+            return;
+        }
+
+        int threadCount = inputReader.readNumberBetween("Thread pool size (2-8): ", 2, 8);
+
+        System.out.println();
+        System.out.println("Exporting " + students.size() + " students using " + threadCount + " threads...");
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            BatchExportResult result = concurrentBatchExporter.exportAll(students, threadCount);
+            long duration = System.currentTimeMillis() - startTime;
+
+            System.out.println();
+            System.out.println("Batch export completed in " + duration + "ms");
+            System.out.println("Thread Pool: " + threadCount + " threads active");
+            System.out.println("Successful: " + result.getSuccessCount() + " of " + students.size());
+
+            if (!result.getFailures().isEmpty()) {
+                System.out.println();
+                System.out.println("Failures:");
+                for (String failure : result.getFailures()) {
+                    System.out.println("  " + failure);
+                }
+            }
+        } catch (InterruptedException e) {
+            System.out.println("Batch export was interrupted: " + e.getMessage());
+            Thread.currentThread().interrupt();
         }
     }
 
