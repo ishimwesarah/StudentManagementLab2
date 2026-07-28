@@ -283,3 +283,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
 - Unit tests: `GpaRankingServiceTest`, including a dedicated test for
   the tied-group ranking edge case.
 
+### HashSet-Based Course Tracking (feature/hashset-course-tracking)
+- Added `CourseTracker`, using `HashSet<String>` to track distinct
+  subjects across all recorded grades - duplicates collapse
+  automatically, since Set enforces uniqueness by definition rather
+  than requiring manual "have I seen this before?" checks.
+- `getUniqueCourses()`, `getUniqueCoursesForStudent(id)`, and
+  `getUniqueCourseCount()` all return `Set<String>` (or its size)
+  rather than `List<String>` - the return type itself communicates the
+  no-duplicates guarantee as part of the compiler-checked contract.
+- Wired into `ClassStatisticsPrinter` - "Unique Courses Tracked" now
+  appears alongside total students/grades in the class statistics view.
+- Unit tests: `CourseTrackerTest`, including a dedicated test proving
+  multiple grades in the same subject collapse into a single entry.
+
+This completes the Collections upgrade phase: HashMap (O(1) student
+lookup), TreeMap (sorted GPA rankings, tie-aware), and HashSet (unique
+course tracking) are all in place.
+
