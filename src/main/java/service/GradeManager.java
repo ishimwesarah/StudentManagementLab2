@@ -5,14 +5,17 @@ import model.Grade;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * All public methods are synchronized - see StudentManager for why:
+ * this class's array is read and written by both the console's main
+ * thread and GpaRecalculationScheduler's background thread.
+ */
 public class GradeManager {
 
     private Grade[] grades = new Grade[200];
     private int gradeCount = 0;
 
-
-    public boolean addGrade(Grade grade) {
+    public synchronized boolean addGrade(Grade grade) {
         if (gradeCount >= grades.length) {
             System.out.println("Cannot add grade, storage is full.");
             return false;
@@ -23,21 +26,11 @@ public class GradeManager {
         return true;
     }
 
-    /**
-     * @return the total number of grades currently stored, across all students
-     */
-    public int getGradeCount() {
+    public synchronized int getGradeCount() {
         return gradeCount;
     }
 
-    /**
-     * Returns all grades belonging to the given student, in the order they
-     * were recorded (oldest first).
-     *
-     * @param studentId the student ID to filter by (case-insensitive)
-     * @return that student's grades, or an empty list if they have none
-     */
-    public List<Grade> getGradesByStudent(String studentId) {
+    public synchronized List<Grade> getGradesByStudent(String studentId) {
         List<Grade> result = new ArrayList<>();
         for (int i = 0; i < gradeCount; i++) {
             if (grades[i].getStudentId().equalsIgnoreCase(studentId)) {
@@ -47,10 +40,7 @@ public class GradeManager {
         return result;
     }
 
-    /**
-     * @return every grade currently stored, across all students
-     */
-    public List<Grade> getAllGrades() {
+    public synchronized List<Grade> getAllGrades() {
         List<Grade> result = new ArrayList<>();
         for (int i = 0; i < gradeCount; i++) {
             result.add(grades[i]);
