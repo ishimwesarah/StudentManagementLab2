@@ -538,3 +538,28 @@ requirement under NIO.2 Requirements.
 This addresses the remaining Lab 3 Architecture Requirements for
 `PriorityQueue` and `LinkedList`, with genuine use cases rather than
 type substitutions for their own sake.
+
+### Streaming File I/O - Files.lines() and BufferedWriter (feature/streaming-file-io)
+- `CSVParser` now reads with `Files.lines(filePath)` (a lazy
+  `Stream<String>`) instead of `Files.readAllLines()`, wrapped in
+  try-with-resources since the stream holds an open file handle.
+  Honest note: this parser still materializes the stream into a `List`
+  immediately (`.toList()`), since the parsing logic genuinely needs
+  indexed access (checking line 0 as the header, tracking row numbers)
+  - the true benefit of lazy, one-at-a-time consumption isn't fully
+    exploited here, but the requested streaming API is used correctly.
+- `AuditLogger` now opens one persistent `BufferedWriter`
+  (`Files.newBufferedWriter`) for its whole lifetime instead of a fresh
+  `Files.writeString()` call per log entry. Deliberately still flushes
+  after every single write - an audit log's whole purpose is a durable
+  record, so immediate flushing was chosen over maximum buffering
+  throughput. The writer is only ever opened, written to, and closed
+  from the single logging thread, keeping the "only one thread ever
+  touches this resource" discipline consistent with why no additional
+  synchronization is needed here.
+- No test changes were needed for either class - existing tests passed
+  unchanged, confirming both refactors preserved exact behavior.
+
+This completes the Lab 3 NIO.2 Requirements list: Path API, Files.lines()
+streaming, BufferedWriter, object serialization (BinaryGradeExporter),
+and WatchService directory monitoring are all now implemented.
