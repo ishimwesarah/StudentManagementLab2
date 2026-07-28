@@ -10,24 +10,18 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-/**
- * Formats and prints class-wide statistics: grade distribution (with a
- * simple bar chart), mean/median/mode/standard deviation, highest/lowest
- * grades, per-subject averages, and Regular vs. Honors comparison.
- *
- * Delegates all math to ClassStatisticsCalculator - this class only knows
- * how to lay text out on screen, same pattern as the other printers.
- */
 public class ClassStatisticsPrinter {
 
     private final GradeManager gradeManager;
     private final StudentManager studentManager;
     private final ClassStatisticsCalculator calculator;
+    private final CourseTracker courseTracker;
 
     public ClassStatisticsPrinter(GradeManager gradeManager, StudentManager studentManager, ClassStatisticsCalculator calculator) {
         this.gradeManager = gradeManager;
         this.studentManager = studentManager;
         this.calculator = calculator;
+        this.courseTracker = new CourseTracker(gradeManager);
     }
 
     public void printClassStatistics() {
@@ -40,6 +34,7 @@ public class ClassStatisticsPrinter {
         System.out.println();
         System.out.println("Total Students: " + allStudents.size());
         System.out.println("Total Grades Recorded: " + allGrades.size());
+        System.out.println("Unique Courses Tracked: " + courseTracker.getUniqueCourseCount());
 
         if (allGrades.isEmpty()) {
             System.out.println();
@@ -71,7 +66,7 @@ public class ClassStatisticsPrinter {
     }
 
     private String bar(double percentage) {
-        int filled = (int) Math.round(percentage / 5.0); // 20 segments = 5% each
+        int filled = (int) Math.round(percentage / 5.0);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 20; i++) {
             sb.append(i < filled ? '\u2588' : '\u2591');
