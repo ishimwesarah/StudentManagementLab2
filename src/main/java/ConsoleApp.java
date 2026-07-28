@@ -1,5 +1,4 @@
 import exception.InvalidFileFormatException;
-import exception.InvalidGradeException;
 import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
@@ -25,7 +24,7 @@ import java.util.Scanner;
 
 public class ConsoleApp {
 
-    private final Scanner scanner;
+    private final ConsoleInputReader inputReader;
 
     private final StudentManager studentManager;
     private final StudentAverageCalculator studentAverageCalculator;
@@ -54,7 +53,7 @@ public class ConsoleApp {
     private final ElectiveSubject pe;
 
     public ConsoleApp() {
-        this.scanner = new Scanner(System.in);
+        this.inputReader = new ConsoleInputReader(new Scanner(System.in));
 
         this.studentManager = new StudentManager();
         this.studentAverageCalculator = new StudentAverageCalculator();
@@ -103,7 +102,7 @@ public class ConsoleApp {
         boolean running = true;
         while (running) {
             printMenu();
-            int choice = readMenuChoice();
+            int choice = inputReader.readMenuChoice();
 
             switch (choice) {
                 case 1:
@@ -150,7 +149,7 @@ public class ConsoleApp {
             if (running) {
                 System.out.println();
                 System.out.println("Press Enter to continue...");
-                scanner.nextLine();
+                inputReader.readLine();
             }
         }
     }
@@ -174,24 +173,15 @@ public class ConsoleApp {
         System.out.print("Enter choice: ");
     }
 
-    private int readMenuChoice() {
-        String input = scanner.nextLine();
-        try {
-            return Integer.parseInt(input.trim());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-    }
-
     private void addStudent() {
         System.out.println();
         System.out.println("ADD STUDENT");
         System.out.println("---------------------------------------------");
 
         System.out.print("Enter student name: ");
-        String name = scanner.nextLine();
+        String name = inputReader.readLine();
 
-        int age = readNumberBetween("Enter student age: ", 3, 120);
+        int age = inputReader.readNumberBetween("Enter student age: ", 3, 120);
 
         String email = promptForValidEmail();
         String phone = promptForValidPhone();
@@ -200,7 +190,7 @@ public class ConsoleApp {
         System.out.println("Student type:");
         System.out.println("1. Regular Student (Passing grade: 50%)");
         System.out.println("2. Honors Student (Passing grade: 60%, honors recognition)");
-        int type = readNumberBetween("Select type (1-2): ", 1, 2);
+        int type = inputReader.readNumberBetween("Select type (1-2): ", 1, 2);
 
         Student newStudent;
         if (type == 1) {
@@ -219,7 +209,7 @@ public class ConsoleApp {
     private String promptForValidEmail() {
         while (true) {
             System.out.print("Enter student email: ");
-            String email = scanner.nextLine();
+            String email = inputReader.readLine();
             if (inputValidator.isValidEmail(email)) {
                 return email;
             }
@@ -230,7 +220,7 @@ public class ConsoleApp {
     private String promptForValidPhone() {
         while (true) {
             System.out.print("Enter student phone: ");
-            String phone = scanner.nextLine();
+            String phone = inputReader.readLine();
             if (inputValidator.isValidPhone(phone)) {
                 return phone;
             }
@@ -258,7 +248,7 @@ public class ConsoleApp {
         System.out.println("Subject type:");
         System.out.println("1. Core Subject (Mathematics, English, Science)");
         System.out.println("2. Elective Subject (Music, Art, Physical Education)");
-        int subjectType = readNumberBetween("Select type (1-2): ", 1, 2);
+        int subjectType = inputReader.readNumberBetween("Select type (1-2): ", 1, 2);
 
         Subject subject = null;
 
@@ -268,7 +258,7 @@ public class ConsoleApp {
             System.out.println("1. Mathematics");
             System.out.println("2. English");
             System.out.println("3. Science");
-            int pick = readNumberBetween("Select subject (1-3): ", 1, 3);
+            int pick = inputReader.readNumberBetween("Select subject (1-3): ", 1, 3);
 
             if (pick == 1) {
                 subject = math;
@@ -283,7 +273,7 @@ public class ConsoleApp {
             System.out.println("1. Music");
             System.out.println("2. Art");
             System.out.println("3. Physical Education");
-            int pick = readNumberBetween("Select subject (1-3): ", 1, 3);
+            int pick = inputReader.readNumberBetween("Select subject (1-3): ", 1, 3);
 
             if (pick == 1) {
                 subject = music;
@@ -294,7 +284,7 @@ public class ConsoleApp {
             }
         }
 
-        double grade = promptForGrade();
+        double grade = inputReader.promptForGrade();
         if (grade < 0) {
             System.out.println("Grade entry cancelled.");
             return;
@@ -309,7 +299,7 @@ public class ConsoleApp {
         System.out.println("---------------------------------------------");
 
         System.out.print("Confirm grade? (Y/N): ");
-        String confirm = scanner.nextLine();
+        String confirm = inputReader.readLine();
 
         if (confirm.equalsIgnoreCase("Y")) {
             Grade newGrade = new Grade(student.getStudentId(), subject, grade);
@@ -361,29 +351,29 @@ public class ConsoleApp {
         System.out.println("3. By Grade Range");
         System.out.println("4. By Student Type");
         System.out.println("5. By Pattern (regex on name/email)");
-        int option = readNumberBetween("Select option (1-5): ", 1, 5);
+        int option = inputReader.readNumberBetween("Select option (1-5): ", 1, 5);
 
         List<Student> results;
 
         switch (option) {
             case 1:
                 System.out.print("Enter Student ID: ");
-                results = studentSearchService.searchById(scanner.nextLine());
+                results = studentSearchService.searchById(inputReader.readLine());
                 break;
             case 2:
                 System.out.print("Enter name (partial or full): ");
-                results = studentSearchService.searchByName(scanner.nextLine());
+                results = studentSearchService.searchByName(inputReader.readLine());
                 break;
             case 3:
-                double min = readGradeBound("Enter minimum grade (0-100): ");
-                double max = readGradeBound("Enter maximum grade (0-100): ");
+                double min = inputReader.readGradeBound("Enter minimum grade (0-100): ");
+                double max = inputReader.readGradeBound("Enter maximum grade (0-100): ");
                 results = studentSearchService.searchByGradeRange(min, max);
                 break;
             case 4:
                 System.out.println();
                 System.out.println("1. Regular");
                 System.out.println("2. Honors");
-                int typeChoice = readNumberBetween("Select type (1-2): ", 1, 2);
+                int typeChoice = inputReader.readNumberBetween("Select type (1-2): ", 1, 2);
                 results = studentSearchService.searchByType(typeChoice == 1 ? "Regular" : "Honors");
                 break;
             default:
@@ -399,7 +389,7 @@ public class ConsoleApp {
         System.out.println("Enter a regex pattern to match against name or email.");
         System.out.println("Example: .*@university\\.edu$   (matches a domain)");
         System.out.print("Pattern: ");
-        String pattern = scanner.nextLine();
+        String pattern = inputReader.readLine();
 
         try {
             return regexStudentSearchService.search(pattern);
@@ -407,22 +397,6 @@ public class ConsoleApp {
             System.out.println();
             System.out.println("\u2717 " + e.getMessage());
             return List.of();
-        }
-    }
-
-    private double readGradeBound(String prompt) {
-        while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine();
-            try {
-                double value = Double.parseDouble(input.trim());
-                if (value >= 0 && value <= 100) {
-                    return value;
-                }
-                System.out.println("Please enter a value between 0 and 100.");
-            } catch (NumberFormatException e) {
-                System.out.println("Please enter a valid number.");
-            }
         }
     }
 
@@ -469,10 +443,10 @@ public class ConsoleApp {
         System.out.println("1. Summary Report (overview only)");
         System.out.println("2. Detailed Report (all grades)");
         System.out.println("3. Both");
-        int option = readNumberBetween("Select option (1-3): ", 1, 3);
+        int option = inputReader.readNumberBetween("Select option (1-3): ", 1, 3);
 
         System.out.print("Enter filename (without extension): ");
-        String filename = scanner.nextLine().trim();
+        String filename = inputReader.readLine().trim();
 
         try {
             if (option == 1 || option == 3) {
@@ -515,7 +489,7 @@ public class ConsoleApp {
         System.out.println();
 
         System.out.print("Enter filename (without extension): ");
-        String filename = scanner.nextLine().trim();
+        String filename = inputReader.readLine().trim();
         Path filePath = Paths.get("imports", filename + ".csv");
 
         try {
@@ -608,7 +582,7 @@ public class ConsoleApp {
     private Student promptForExistingStudent() {
         while (true) {
             System.out.print("Enter Student ID: ");
-            String studentId = scanner.nextLine();
+            String studentId = inputReader.readLine();
 
             try {
                 return studentManager.findStudent(studentId);
@@ -620,61 +594,9 @@ public class ConsoleApp {
                 System.out.println("  Available student IDs: " + String.join(", ", studentManager.getAllStudentIds()));
                 System.out.println();
                 System.out.print("  Try again? (Y/N): ");
-                String retry = scanner.nextLine();
+                String retry = inputReader.readLine();
                 if (!retry.equalsIgnoreCase("Y")) {
                     return null;
-                }
-            }
-        }
-    }
-
-    private int readNumberBetween(String prompt, int min, int max) {
-        while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine();
-            try {
-                int value = Integer.parseInt(input.trim());
-                if (value >= min && value <= max) {
-                    return value;
-                }
-                System.out.println("Please enter a number between " + min + " and " + max + ".");
-            } catch (NumberFormatException e) {
-                System.out.println("Please enter a valid whole number.");
-            }
-        }
-    }
-
-    private double parseGrade() throws InvalidGradeException {
-        System.out.print("Enter grade (0-100): ");
-        String input = scanner.nextLine();
-
-        double value;
-        try {
-            value = Double.parseDouble(input.trim());
-        } catch (NumberFormatException e) {
-            throw new InvalidGradeException("Grade must be a valid number. You entered: '" + input.trim() + "'");
-        }
-
-        if (value < 0 || value > 100) {
-            throw new InvalidGradeException("Grade must be between 0 and 100. You entered: " + value);
-        }
-
-        return value;
-    }
-
-    private double promptForGrade() {
-        while (true) {
-            try {
-                return parseGrade();
-            } catch (InvalidGradeException e) {
-                System.out.println();
-                System.out.println("\u2717 ERROR: InvalidGradeException");
-                System.out.println("  " + e.getMessage());
-                System.out.println();
-                System.out.print("  Try again? (Y/N): ");
-                String retry = scanner.nextLine();
-                if (!retry.equalsIgnoreCase("Y")) {
-                    return -1;
                 }
             }
         }
