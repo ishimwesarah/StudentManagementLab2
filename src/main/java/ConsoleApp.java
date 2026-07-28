@@ -9,6 +9,7 @@ import service.concurrency.ConcurrentBatchExporter;
 import service.concurrency.DashboardSnapshot;
 import service.concurrency.GpaCache;
 import service.concurrency.GpaRecalculationScheduler;
+import service.concurrency.ImportDirectoryWatcher;
 import service.concurrency.RealTimeDashboardService;
 import service.exporting.BinaryGradeExporter;
 import service.exporting.CsvGradeExporter;
@@ -28,6 +29,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ConsoleApp {
 
@@ -56,6 +58,8 @@ public class ConsoleApp {
     private final GpaRecalculationScheduler gpaRecalculationScheduler;
     private final AuditLogger auditLogger;
     private final RealTimeDashboardService dashboardService;
+    private final ImportDirectoryWatcher importDirectoryWatcher;
+    private final ConcurrentLinkedQueue<Path> pendingAutoImports;
 
     private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
     private static final long DASHBOARD_REFRESH_INTERVAL_SECONDS = 5;
@@ -107,6 +111,9 @@ public class ConsoleApp {
 
         this.dashboardService = new RealTimeDashboardService(gradeManager, classStatisticsCalculator);
 
+        this.pendingAutoImports = new ConcurrentLinkedQueue<>();
+        this.importDirectoryWatcher = new ImportDirectoryWatcher(Paths.get("imports"), pendingAutoImports::add);
+
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
         this.science = new CoreSubject("Science", "SCI101");
@@ -124,9 +131,11 @@ public class ConsoleApp {
         loadSampleData();
         gpaRecalculationScheduler.start(GPA_RECALCULATION_INTERVAL_SECONDS);
         dashboardService.startAutoRefresh(DASHBOARD_REFRESH_INTERVAL_SECONDS);
+        startImportWatcher();
 
         boolean running = true;
         while (running) {
+            checkForAutoDetectedImports();
             printMenu();
             int choice = inputReader.readMenuChoice();
 
@@ -173,6 +182,7 @@ public class ConsoleApp {
                 case 14:
                     gpaRecalculationScheduler.stop();
                     dashboardService.stopAutoRefresh();
+                    importDirectoryWatcher.stop();
                     auditLogger.shutdown();
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
@@ -189,6 +199,50 @@ public class ConsoleApp {
                 System.out.println("Press Enter to continue...");
                 inputReader.readLine();
             }
+        }
+    }
+
+    private void startImportWatcher() {
+        try {
+            importDirectoryWatcher.start();
+        } catch (IOException e) {
+            System.out.println("(Could not start import directory watcher: " + e.getMessage() + ")");
+        }
+    }
+
+    /**
+     * Checked once per menu loop iteration (not from the watcher's own
+     * background thread) - this keeps all console output happening on
+     * a single thread, avoiding any risk of the watcher thread printing
+     * to the console at the same moment the main thread is mid-prompt.
+     */
+    private void checkForAutoDetectedImports() {
+        Path detectedFile;
+        while ((detectedFile = pendingAutoImports.poll()) != null) {
+            System.out.println();
+            System.out.println("\ud83d\udcc1 New CSV file detected: " + detectedFile.getFileName());
+            System.out.print("Import it now? (Y/N): ");
+            String response = inputReader.readLine();
+
+            if (response.equalsIgnoreCase("Y")) {
+                importDetectedFile(detectedFile);
+            } else {
+                System.out.println("Skipped. You can still import it manually later.");
+            }
+        }
+    }
+
+    private void importDetectedFile(Path filePath) {
+        try {
+            BulkImportResult result = bulkImportService.importFromFile(filePath);
+            printImportSummary(result);
+            writeImportLog(result);
+            auditLogger.log("Auto-detected bulk import completed: " + result.getSuccessCount() + " succeeded, "
+                    + result.getFailureCount() + " failed (file: " + filePath.getFileName() + ")");
+        } catch (InvalidFileFormatException e) {
+            System.out.println();
+            System.out.println("\u2717 ERROR: InvalidFileFormatException");
+            System.out.println("  " + e.getMessage());
         }
     }
 
