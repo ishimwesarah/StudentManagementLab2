@@ -267,4 +267,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), grouped 
 - Unit test added confirming lookup time stays roughly flat as the
   roster grows, rather than scaling linearly - a directional sanity
   check, not a strict benchmark, given natural JVM timing noise.
+### TreeMap-Based GPA Rankings (feature/treemap-rankings)
+- Added `GpaRankingService`, using `TreeMap<Double, List<Student>>` keyed
+  by GPA - students sharing an identical GPA are grouped under the same
+  key rather than silently overwriting each other, which a plain
+  `TreeMap<Double, Student>` would have allowed.
+- `buildRankingMap()` provides a continuously sorted view of the class
+  by GPA. `getTopStudents(count)` walks the map in descending order for
+  a leaderboard. `calculateRank(student)` correctly accounts for tied
+  groups - if two students share the top GPA, the next distinct GPA
+  is ranked third, not second.
+- `GPAReportPrinter` no longer maintains its own rank calculation -
+  it now delegates to `GpaRankingService`, removing a duplicated piece
+  of logic that previously lived only inside the printer.
+- Unit tests: `GpaRankingServiceTest`, including a dedicated test for
+  the tied-group ranking edge case.
 
