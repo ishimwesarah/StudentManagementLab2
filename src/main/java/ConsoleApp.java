@@ -3,6 +3,7 @@ import exception.ReportExportException;
 import exception.StudentNotFoundException;
 import model.*;
 import service.*;
+import service.concurrency.AuditLogger;
 import service.concurrency.BatchExportResult;
 import service.concurrency.ConcurrentBatchExporter;
 import service.concurrency.GpaCache;
@@ -51,6 +52,7 @@ public class ConsoleApp {
     private final ConcurrentBatchExporter concurrentBatchExporter;
     private final GpaCache gpaCache;
     private final GpaRecalculationScheduler gpaRecalculationScheduler;
+    private final AuditLogger auditLogger;
 
     private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
 
@@ -96,6 +98,8 @@ public class ConsoleApp {
 
         this.gpaCache = new GpaCache();
         this.gpaRecalculationScheduler = new GpaRecalculationScheduler(studentManager, gradeManager, gpaCalculator, gpaCache);
+
+        this.auditLogger = new AuditLogger();
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -158,6 +162,7 @@ public class ConsoleApp {
                     break;
                 case 13:
                     gpaRecalculationScheduler.stop();
+                    auditLogger.shutdown();
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
                     System.out.println("Goodbye!");
@@ -240,6 +245,7 @@ public class ConsoleApp {
         }
 
         studentManager.addStudent(newStudent);
+        auditLogger.log("Student added: " + newStudent.getStudentId() + " (" + newStudent.getName() + ", " + newStudent.getStudentType() + ")");
 
         System.out.println();
         System.out.println("Student added successfully!");
@@ -345,6 +351,8 @@ public class ConsoleApp {
             Grade newGrade = new Grade(student.getStudentId(), subject, grade);
             student.recordGrade(grade);
             gradeManager.addGrade(newGrade);
+            auditLogger.log("Grade recorded: " + newGrade.getGradeId() + " for " + student.getStudentId()
+                    + " in " + subject.getSubjectName() + " (" + grade + "%)");
             System.out.println();
             System.out.println("Grade recorded successfully! (" + newGrade.getGradeId() + ")");
             newGrade.displayGradeDetails();
@@ -499,6 +507,7 @@ public class ConsoleApp {
                 String detailedFilename = option == 3 ? filename + "_detailed" : filename;
                 writeAndConfirm(detailedFilename, detailed);
             }
+            auditLogger.log("Grade report exported for " + student.getStudentId() + " (option " + option + ")");
         } catch (ReportExportException e) {
             System.out.println();
             System.out.println("\u2717 ERROR: ReportExportException");
@@ -536,6 +545,8 @@ public class ConsoleApp {
             BulkImportResult result = bulkImportService.importFromFile(filePath);
             printImportSummary(result);
             writeImportLog(result);
+            auditLogger.log("Bulk import completed: " + result.getSuccessCount() + " succeeded, "
+                    + result.getFailureCount() + " failed (file: " + filename + ".csv)");
         } catch (InvalidFileFormatException e) {
             System.out.println();
             System.out.println("\u2717 ERROR: InvalidFileFormatException");
@@ -617,6 +628,8 @@ public class ConsoleApp {
                 System.out.println(exporter.getFormatName() + " Export failed: " + e.getMessage());
             }
         }
+
+        auditLogger.log("Multi-format export completed for " + student.getStudentId());
     }
 
     private void runConcurrentBatchExport() {
@@ -653,6 +666,9 @@ public class ConsoleApp {
                     System.out.println("  " + failure);
                 }
             }
+
+            auditLogger.log("Concurrent batch export: " + result.getSuccessCount() + " of " + students.size()
+                    + " succeeded, using " + threadCount + " threads, took " + duration + "ms");
         } catch (InterruptedException e) {
             System.out.println("Batch export was interrupted: " + e.getMessage());
             Thread.currentThread().interrupt();

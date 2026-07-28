@@ -384,3 +384,31 @@ This is the second of four required executor types from the Lab 3
 brief (`FixedThreadPool` done via batch export; `ScheduledThreadPool`
 done here). `CachedThreadPool` and `SingleThreadExecutor` remain.
 
+### Audit Trail Logging (feature/audit-logging)
+- Added `AuditLogger`, using `Executors.newSingleThreadExecutor()` -
+  every log write is funneled through exactly one dedicated worker
+  thread, guaranteeing entries are written strictly in the order they
+  were submitted with zero interleaving risk, without needing any
+  `synchronized` keyword (there's only ever one thread touching the
+  file, so nothing to protect against).
+- `log(event)` returns immediately - the calling thread hands off the
+  message and continues its own work; the actual disk write happens
+  asynchronously on the dedicated logging thread.
+- Writes append-only, timestamped entries to `logs/audit.log`
+  (`StandardOpenOption.CREATE` + `APPEND` - never overwrites prior
+  entries).
+- Wired into `ConsoleApp` at six key event points: student added,
+  grade recorded, grade report exported, multi-format export completed,
+  concurrent batch export completed, bulk import completed. Shut down
+  cleanly alongside the GPA scheduler on app exit.
+- Unit tests: `AuditLoggerTest`, including a dedicated test proving
+  strict write ordering is preserved across multiple log calls - the
+  actual justification for choosing a single-thread executor over a
+  pool.
+
+This completes all four executor types required by the Lab 3 brief:
+`FixedThreadPool` (concurrent batch export), `ScheduledThreadPool`
+(GPA recalculation), and `SingleThreadExecutor` (audit logging).
+`CachedThreadPool` (for the real-time statistics dashboard) remains as
+the last piece of the concurrency phase.
+
