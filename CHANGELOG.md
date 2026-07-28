@@ -301,3 +301,21 @@ This completes the Collections upgrade phase: HashMap (O(1) student
 lookup), TreeMap (sorted GPA rankings, tie-aware), and HashSet (unique
 course tracking) are all in place.
 
+
+### Regex Input Validation (feature/regex-validation)
+- Added `InputValidator` in a new `service.validation` subpackage (same
+  cohesion reasoning as `service.importing`/`service.exporting`) - five
+  compiled, reusable `Pattern` instances (`STUDENT_ID`, `EMAIL`, `PHONE`,
+  `DATE`, `COURSE_CODE`), each checked with `.matches()` rather than
+  `.find()`, since validation requires the entire string to conform to
+  the format, not just contain a matching substring somewhere.
+- Caught a real bug via the test suite: the original email pattern only
+  allowed a single-segment domain (`school.edu`), rejecting legitimate
+  multi-level domains like `university.ac.uk`. Fixed by allowing zero or
+  more repeated domain segments before the final TLD.
+- Wired into `ConsoleApp.addStudent()` - email and phone are now
+  validated on entry with a retry loop, matching the brief's
+  "✗ INVALID ... format" pattern already used elsewhere in the app.
+- Unit tests: `InputValidatorTest`, parameterized per pattern with both
+  valid and invalid examples, plus an explicit null-input case.
+

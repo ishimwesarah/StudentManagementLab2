@@ -11,6 +11,7 @@ import service.importing.BulkImportResult;
 import service.importing.BulkImportService;
 import service.importing.CSVParser;
 import service.importing.ImportFailure;
+import service.validation.InputValidator;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +44,7 @@ public class ConsoleApp {
     private final FileExporter fileExporter;
     private final BulkImportService bulkImportService;
     private final List<Exportable> gradeDataExporters;
+    private final InputValidator inputValidator;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -79,6 +81,8 @@ public class ConsoleApp {
                 new JsonGradeExporter(),
                 new BinaryGradeExporter()
         );
+
+        this.inputValidator = new InputValidator();
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -189,11 +193,8 @@ public class ConsoleApp {
 
         int age = readNumberBetween("Enter student age: ", 3, 120);
 
-        System.out.print("Enter student email: ");
-        String email = scanner.nextLine();
-
-        System.out.print("Enter student phone: ");
-        String phone = scanner.nextLine();
+        String email = promptForValidEmail();
+        String phone = promptForValidPhone();
 
         System.out.println();
         System.out.println("Student type:");
@@ -213,6 +214,28 @@ public class ConsoleApp {
         System.out.println();
         System.out.println("Student added successfully!");
         newStudent.displayStudentDetails();
+    }
+
+    private String promptForValidEmail() {
+        while (true) {
+            System.out.print("Enter student email: ");
+            String email = scanner.nextLine();
+            if (inputValidator.isValidEmail(email)) {
+                return email;
+            }
+            System.out.println("\u2717 INVALID email format. Example: name@school.edu");
+        }
+    }
+
+    private String promptForValidPhone() {
+        while (true) {
+            System.out.print("Enter student phone: ");
+            String phone = scanner.nextLine();
+            if (inputValidator.isValidPhone(phone)) {
+                return phone;
+            }
+            System.out.println("\u2717 INVALID phone format. Example: +250780905123");
+        }
     }
 
     private void recordGrade() {
