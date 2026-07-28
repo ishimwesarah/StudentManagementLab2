@@ -319,3 +319,20 @@ course tracking) are all in place.
 - Unit tests: `InputValidatorTest`, parameterized per pattern with both
   valid and invalid examples, plus an explicit null-input case.
 
+### ConsoleInputReader Extraction (refactor/console-input-reader)
+- Extracted `ConsoleInputReader` from `ConsoleApp` - a focused class
+  owning all console input handling (`readMenuChoice`, `readNumberBetween`,
+  `readGradeBound`, `promptForGrade`, plus plain `readLine`/`print`
+  passthroughs). `ConsoleApp` no longer holds its own `Scanner` field.
+- Deliberately NOT placed in a generic "utils" package - a junk-drawer
+  package name would undo the same cohesion discipline already applied
+  to `service.importing`, `service.exporting`, and `service.validation`.
+  `ConsoleInputReader` is named after what it actually does.
+- `promptForExistingStudent()`, `promptForValidEmail()`, and
+  `promptForValidPhone()` deliberately stayed in `ConsoleApp` rather
+  than moving too - they're tightly coupled to business concepts
+  (`StudentManager`, `InputValidator`), and moving them would have just
+  relocated that coupling rather than removed it.
+- No behavior change - every menu option verified manually end-to-end,
+  and the full automated test suite still passes.
+
