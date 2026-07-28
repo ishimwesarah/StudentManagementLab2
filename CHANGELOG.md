@@ -466,3 +466,23 @@ caching with eviction policy" requirement (US-8), completing the part
 of that requirement not yet covered by GpaCache's original
 ConcurrentHashMap-based design.
 
+
+### Stream API Refactor (feature/stream-api-refactor)
+- Rewrote `GradeAverageCalculator` (`calculateOverallAverage`,
+  `averageByType`) and `ClassStatisticsCalculator` (`mean`, `median`,
+  `mode`, `standardDeviation`, `highest`, `lowest`, `averageForSubject`,
+  `averageByType`) using the Stream API - `map`/`mapToDouble`, `filter`,
+  `sorted`, and `collect`, per the Lab 3 brief's US-10 requirement.
+- `mode()` in particular now uses a single
+  `Collectors.groupingBy(Grade::getGrade, Collectors.counting())` call
+  in place of the previous manual `HashMap` + `.merge()` loop -
+  functionally identical result, expressed declaratively.
+- `gradeDistribution()` deliberately kept as a manual loop rather than
+  forced into a stream pipeline - converting it would mean either five
+  separate filtering passes over the same list, or a `groupingBy` with
+  a custom bucketing function that reads less clearly than the current
+  explicit if-chain. Streams are used where they genuinely improve
+  clarity, not applied uniformly regardless of fit.
+- No test changes were needed for either class - every existing test
+  passed unchanged, which is itself the proof this refactor preserved
+  exact behavior rather than just "probably" doing the same thing.
