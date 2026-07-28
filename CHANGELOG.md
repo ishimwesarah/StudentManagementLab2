@@ -355,3 +355,32 @@ course tracking) are all in place.
   (using `ConcurrentHashMap.newKeySet()` to safely record thread names
   from concurrent callers), not just sequentially with extra ceremony.
 
+### Scheduled GPA Recalculation (feature/scheduled-gpa-recalculation)
+- Added `GpaCache` - a thread-safe cache using `ConcurrentHashMap`
+  (safe for concurrent reads/writes from multiple threads without
+  manual locking) and a `volatile` timestamp field (guarantees every
+  thread sees the most recent update immediately, rather than a
+  possibly-stale cached value).
+- Added `GpaRecalculationScheduler`, using `ScheduledExecutorService`
+  (`newSingleThreadScheduledExecutor` + `scheduleAtFixedRate`) to
+  recompute every student's GPA on a fixed interval, running
+  independently of the console's main thread.
+- Made `StudentManager` and `GradeManager`'s public methods
+  `synchronized` - this background scheduler reads the same shared
+  arrays the main thread writes to (e.g. recording a new grade),
+  which is genuine shared mutable state, unlike the read-only,
+  per-student isolation that kept concurrent batch export safe by
+  design. `synchronized` guarantees no two threads can execute any
+  combination of these methods on the same instance simultaneously.
+- Wired into `ConsoleApp`: the scheduler starts automatically when the
+  app launches and stops cleanly on exit. New menu option
+  **12. View Scheduled Task Status** shows the interval, last run
+  time, and cached GPA count (Exit shifted from 12 to 13).
+- Unit tests: `GpaRecalculationSchedulerTest`, using a polling-based
+  wait helper (rather than a fixed `Thread.sleep`) to reliably confirm
+  background work completes without flaky, timing-dependent assertions.
+
+This is the second of four required executor types from the Lab 3
+brief (`FixedThreadPool` done via batch export; `ScheduledThreadPool`
+done here). `CachedThreadPool` and `SingleThreadExecutor` remain.
+
