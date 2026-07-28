@@ -563,3 +563,22 @@ type substitutions for their own sake.
 This completes the Lab 3 NIO.2 Requirements list: Path API, Files.lines()
 streaming, BufferedWriter, object serialization (BinaryGradeExporter),
 and WatchService directory monitoring are all now implemented.
+
+
+### Concurrency Branch Coverage (feature/concurrency-branch-coverage)
+- Added targeted tests for previously-uncovered failure-path branches:
+  a task that throws inside `ConcurrentBatchExporter`'s thread pool
+  (exercising the `catch (Exception e)` branch around `Future.get()`),
+  a computation failure inside `RealTimeDashboardService`'s parallel
+  statistic tasks (exercising `catch (InterruptedException |
+  ExecutionException e)`), and calling `ImportDirectoryWatcher.stop()`
+  before `start()` was ever called.
+- Coverage moved from 89%/78% to 92%/81% (instructions/branches) in
+  `service.concurrency` specifically. Overall project coverage: 85%
+  instructions, 82% branches - meets the Lab 3 brief's stated 85%
+  minimum.
+- Remaining gaps are concentrated in `model` (display methods with
+  minimal logic, never directly unit tested) and `exception`
+  (constructor-only classes with little to meaningfully cover) -
+  judged as low-value further testing targets relative to the effort
+  required, so 85% was accepted as the final figure for this project.
