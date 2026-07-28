@@ -6,8 +6,10 @@ import service.*;
 import service.concurrency.AuditLogger;
 import service.concurrency.BatchExportResult;
 import service.concurrency.ConcurrentBatchExporter;
+import service.concurrency.DashboardSnapshot;
 import service.concurrency.GpaCache;
 import service.concurrency.GpaRecalculationScheduler;
+import service.concurrency.RealTimeDashboardService;
 import service.exporting.BinaryGradeExporter;
 import service.exporting.CsvGradeExporter;
 import service.exporting.JsonGradeExporter;
@@ -53,8 +55,10 @@ public class ConsoleApp {
     private final GpaCache gpaCache;
     private final GpaRecalculationScheduler gpaRecalculationScheduler;
     private final AuditLogger auditLogger;
+    private final RealTimeDashboardService dashboardService;
 
     private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
+    private static final long DASHBOARD_REFRESH_INTERVAL_SECONDS = 5;
 
     private final CoreSubject math;
     private final CoreSubject english;
@@ -101,6 +105,8 @@ public class ConsoleApp {
 
         this.auditLogger = new AuditLogger();
 
+        this.dashboardService = new RealTimeDashboardService(gradeManager, classStatisticsCalculator);
+
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
         this.science = new CoreSubject("Science", "SCI101");
@@ -117,6 +123,7 @@ public class ConsoleApp {
     public void run() {
         loadSampleData();
         gpaRecalculationScheduler.start(GPA_RECALCULATION_INTERVAL_SECONDS);
+        dashboardService.startAutoRefresh(DASHBOARD_REFRESH_INTERVAL_SECONDS);
 
         boolean running = true;
         while (running) {
@@ -161,7 +168,11 @@ public class ConsoleApp {
                     printScheduledTaskStatus();
                     break;
                 case 13:
+                    printRealTimeDashboard();
+                    break;
+                case 14:
                     gpaRecalculationScheduler.stop();
+                    dashboardService.stopAutoRefresh();
                     auditLogger.shutdown();
                     System.out.println();
                     System.out.println("Thank you for using Student Grade Management System!");
@@ -169,7 +180,7 @@ public class ConsoleApp {
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 13.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 14.");
                     break;
             }
 
@@ -198,7 +209,8 @@ public class ConsoleApp {
         System.out.println("10. Multi-Format Export");
         System.out.println("11. Concurrent Batch Reports");
         System.out.println("12. View Scheduled Task Status");
-        System.out.println("13. Exit");
+        System.out.println("13. Real-Time Statistics Dashboard");
+        System.out.println("14. Exit");
         System.out.print("Enter choice: ");
     }
 
@@ -215,6 +227,32 @@ public class ConsoleApp {
             System.out.println("Cached GPAs: " + gpaCache.size() + " students");
         } else {
             System.out.println("Last run: not yet completed");
+        }
+    }
+
+    private void printRealTimeDashboard() {
+        System.out.println();
+        System.out.println("REAL-TIME STATISTICS DASHBOARD");
+        System.out.println("---------------------------------------------");
+
+        DashboardSnapshot snapshot = dashboardService.getLatestSnapshot();
+        if (snapshot == null) {
+            System.out.println("No snapshot available yet - refreshes every "
+                    + DASHBOARD_REFRESH_INTERVAL_SECONDS + " seconds. Try again shortly.");
+            return;
+        }
+
+        System.out.println("Generated At: " + snapshot.getGeneratedAt());
+        System.out.println("Active Threads: " + snapshot.getActiveThreadCount());
+        System.out.println("Mean Grade: " + Math.round(snapshot.getMeanGrade() * 10) / 10.0 + "%");
+        System.out.println("Median Grade: " + Math.round(snapshot.getMedianGrade() * 10) / 10.0 + "%");
+
+        System.out.println();
+        System.out.println("Grade Distribution (updating live):");
+        String[] labels = {"90-100% (A)", "80-89%  (B)", "70-79%  (C)", "60-69%  (D)", "0-59%   (F)"};
+        int[] distribution = snapshot.getGradeDistribution();
+        for (int i = 0; i < 5; i++) {
+            System.out.println("  " + labels[i] + ": " + distribution[i] + " grades");
         }
     }
 
