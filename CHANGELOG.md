@@ -412,3 +412,34 @@ This completes all four executor types required by the Lab 3 brief:
 `CachedThreadPool` (for the real-time statistics dashboard) remains as
 the last piece of the concurrency phase.
 
+### Real-Time Statistics Dashboard (feature/realtime-dashboard)
+- Added `DashboardSnapshot` - a fully immutable result object (every
+  field set once, in the constructor). Immutability is what makes a
+  completed snapshot safe to read from any thread with no protection
+  needed at read time.
+- Added `RealTimeDashboardService`, using `Executors.newCachedThreadPool()`
+  to compute mean, median, and grade distribution as three independent
+  parallel tasks per refresh - a good fit since the number of
+  computation tasks is small and bursty rather than a large, predictable
+  batch (unlike the fixed pool used for batch export).
+- Publishes each completed snapshot via a single `volatile` field
+  reassignment - readers always see either the complete previous
+  snapshot or the complete new one, never a half-built one, since a
+  single reference assignment is atomic in Java.
+- A `ScheduledExecutorService` triggers a full refresh every 5 seconds,
+  matching the brief's "Background thread updates every 5 seconds"
+  requirement.
+- Wired into `ConsoleApp` as new menu option **13. Real-Time Statistics
+  Dashboard** (Exit shifted from 13 to 14).
+- Unit tests: `RealTimeDashboardServiceTest`, including a dedicated
+  test using a genuine second reader thread running concurrently with
+  repeated refreshes, confirming no partially-built snapshot is ever
+  observed - direct proof of the safe-publication guarantee, not just
+  an assumption.
+
+This completes all four executor types required by the Lab 3 brief:
+`FixedThreadPool` (concurrent batch export), `ScheduledThreadPool`
+(GPA recalculation), `SingleThreadExecutor` (audit logging), and
+`CachedThreadPool` (real-time dashboard). The concurrency phase is
+now fully complete.
+
