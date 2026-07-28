@@ -486,3 +486,32 @@ ConcurrentHashMap-based design.
 - No test changes were needed for either class - every existing test
   passed unchanged, which is itself the proof this refactor preserved
   exact behavior rather than just "probably" doing the same thing.
+
+
+### Automatic Import Detection via WatchService (feature/directory-watcher)
+- Added `ImportDirectoryWatcher`, using `java.nio.file.WatchService` -
+  registers `imports/` for `ENTRY_CREATE` events with the operating
+  system directly, rather than polling the folder repeatedly. Runs its
+  blocking `.take()` wait loop on a dedicated background thread
+  (`SingleThreadExecutor`), since `.take()` would otherwise freeze the
+  console's main thread indefinitely.
+- Fixed a genuine race condition caught by the test suite: registration
+  originally happened inside the background task itself, meaning a
+  file created immediately after `start()` returned could race ahead
+  of the actual OS registration and never get reported. Fixed by
+  registering synchronously in `start()`, before the background loop
+  is even submitted.
+- Detected files are handed off via a `Consumer<Path>` callback into a
+  `ConcurrentLinkedQueue` - the watcher thread never touches the
+  console directly. All prompting happens back on the main thread, once
+  per menu loop iteration, avoiding any risk of watcher output
+  interleaving with an in-progress menu prompt.
+- Wired into `ConsoleApp`: dropping a `.csv` file into `imports/` while
+  the app is running now triggers an automatic "Import it now? (Y/N)"
+  prompt at the next menu cycle, reusing the existing
+  `BulkImportService` pipeline.
+- Unit tests: `ImportDirectoryWatcherTest`, including single-file,
+  multi-file, and non-CSV-filtering cases.
+
+This addresses the Lab 3 brief's "WatchService directory monitoring"
+requirement under NIO.2 Requirements.
