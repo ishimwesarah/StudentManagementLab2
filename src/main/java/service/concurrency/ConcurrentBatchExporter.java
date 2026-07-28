@@ -1,10 +1,12 @@
-package service;
+package service.concurrency;
 
 import exception.ReportExportException;
 import model.Exportable;
 import model.Grade;
 import model.Student;
+import service.GradeManager;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,7 +25,7 @@ public class ConcurrentBatchExporter {
 
     public BatchExportResult exportAll(List<Student> students, int threadCount) throws InterruptedException {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        List<Future<StudentExportOutcome>> futures = new java.util.ArrayList<>();
+        List<Future<StudentExportOutcome>> futures = new ArrayList<>();
 
         for (Student student : students) {
             Future<StudentExportOutcome> future = executor.submit(() -> exportOneStudent(student));
