@@ -62,6 +62,7 @@ public class ConsoleApp {
     private final ImportDirectoryWatcher importDirectoryWatcher;
     private final ConcurrentLinkedQueue<Path> pendingAutoImports;
     private final FailureTriageService failureTriageService;
+    private final AppConfig appConfig;
 
     private static final long GPA_RECALCULATION_INTERVAL_SECONDS = 30;
     private static final long DASHBOARD_REFRESH_INTERVAL_SECONDS = 5;
@@ -115,6 +116,8 @@ public class ConsoleApp {
 
         this.pendingAutoImports = new ConcurrentLinkedQueue<>();
         this.importDirectoryWatcher = new ImportDirectoryWatcher(Paths.get("imports"), pendingAutoImports::add);
+
+        this.appConfig = new AppConfig();
 
         this.math = new CoreSubject("Mathematics", "MATH101");
         this.english = new CoreSubject("English", "ENG101");
@@ -754,10 +757,11 @@ public class ConsoleApp {
             return;
         }
 
-        int threadCount = inputReader.readNumberBetween("Thread pool size (2-8): ", 2, 8);
+        int threadCount = appConfig.getExportThreadPoolSize();
 
         System.out.println();
-        System.out.println("Exporting " + students.size() + " students using " + threadCount + " threads...");
+        System.out.println("Exporting " + students.size() + " students using " + threadCount
+                + " threads (configured in application.properties)...");
 
         long startTime = System.currentTimeMillis();
 
