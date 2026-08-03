@@ -582,3 +582,18 @@ and WatchService directory monitoring are all now implemented.
   (constructor-only classes with little to meaningfully cover) -
   judged as low-value further testing targets relative to the effort
   required, so 85% was accepted as the final figure for this project.
+
+### Configurable Thread Pool Size (feature/configurable-thread-pool)
+- Added `AppConfig`, loading settings from `src/main/resources/application.properties`
+  via the classpath, rather than a file path on disk.
+- `export.threadPoolSize` (default 6, falls back safely if missing,
+  non-numeric, or outside 2-8) now determines the batch export thread
+  pool size - the console no longer asks the user interactively.
+- This reflects how real production systems size shared thread pools:
+  decided once by whoever configures/deploys the application, not
+  chosen per-request by an individual end user - a request-level
+  choice could let many simultaneous users collectively overwhelm the
+  machine if each requested their own large pool independently.
+- Known limitation: `AppConfigTest` currently reads the real bundled
+  properties file rather than an injected test-specific one, so it's
+  more of an integration check than a fully isolated unit test.
